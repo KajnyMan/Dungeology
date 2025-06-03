@@ -54,48 +54,48 @@ CSEG
 	clear_screen
 	
 ; Otwiera plik	
-	ld	de,fcb
-	ld	c,fopen
-	call	BDOS
-	cp	0FFh
-	jp	z,exit
+		ld	de,fcb
+		ld	c,fopen
+		call	BDOS
+		cp	0FFh
+		jp	z,exit
 
 ; Ustawia bufor dla pliku
-	ld	de,MAP##
-nxtrec:	push	de
-	ld	c,setdma
-	call	BDOS
+		ld	de,MAP##
+nxtrec:		push	de
+		ld	c,setdma
+		call	BDOS
 	
 ; Czyta record z pliku do bufora	
-	ld	de,fcb
-	ld	c,rdseq	
-	call	BDOS
-	pop	de
-	or	a
-	jp	nz,readed
-	ld	hl,reclen
-	add	hl,de
-	ex	de,hl
-	jr	nxtrec
+		ld	de,fcb
+		ld	c,rdseq	
+		call	BDOS
+		pop	de
+		or	a
+		jp	nz,readed
+		ld	hl,reclen
+		add	hl,de
+		ex	de,hl
+		jr	nxtrec
 readed:
 
 ; Oblicza offset hero wzgledem poczatku MAP'y
-	ld	a,(hero_y)
-	dec	a
-	ld	c,a
-	sla	c		; clrf offset
-	ld	b,04h		; x 16
-mult1:	sla	a		; Y offset
-	djnz	mult1
-	add	a,c		; Y + crlf
-	ld	hl,hero_x
-	add	a,(hl)		; Y + crlf + X 
-	dec	a
-	ld	(hero_o),a
+		ld	a,(hero_y)
+		dec	a
+		ld	c,a
+		sla	c		; clrf offset
+		ld	b,04h		; x 16
+mult1:		sla	a		; Y offset
+		djnz	mult1
+		add	a,c		; Y + crlf
+		ld	hl,hero_x
+		add	a,(hl)		; Y + crlf + X 
+		dec	a
+		ld	(hero_o),a
 
 	hide_cursor
 
-	jr	begin
+		jr	begin
 
 ; Sprawdza czy ruch jest mozliwy
 ismove:		call	right_before
@@ -152,137 +152,137 @@ refresh:
 ;		ld	(hero_c),a	; temp KOPIA IKONY
 		call	BDOS
 
-	ld	de,(hero_y)
-	ld	hl,(map_position)
-	add	hl,de
-	ex	de,hl
-	call	crsmov		; cofa kursor
+		ld	de,(hero_y)
+		ld	hl,(map_position)
+		add	hl,de
+		ex	de,hl
+		call	crsmov		; cofa kursor
 		show_cursor
 	
 ;--------------------------
 ; Petla odczytu klawiatury
 ;--------------------------
-loop1:	ld	c,conio
-	ld	e,0FFh	; kbd read
-	call	BDOS
-	cp	a,01h
-	jr	c,loop1
-	cp	a,'f'
-	jr	z,trn_r
-	cp	a,'s'
-	jp	z,trn_l
-	cp	a,'e'
-	jp	z,ismove
-	cp	a,'h'
-	jr	z,left
-	cp	a,'j'
-	jr	z,down
-	cp	a,'k'
-	jr	z,up
-	cp	a,'l'
-	jr	z,right
-	cp	a,'d'
-	jp	z,door
-	cp	a,'Q'	; exit
-	jr	z,halt
-	jr	loop1
+loop1:		ld	c,conio
+		ld	e,0FFh	; kbd read
+		call	BDOS
+		cp	a,01h
+		jr	c,loop1
+		cp	a,'f'
+		jr	z,trn_r
+		cp	a,'s'
+		jp	z,trn_l
+		cp	a,'e'
+		jp	z,ismove
+		cp	a,'h'
+		jr	z,left
+		cp	a,'j'
+		jr	z,down
+		cp	a,'k'
+		jr	z,up
+		cp	a,'l'
+		jr	z,right
+		cp	a,'d'
+		jp	z,door
+		cp	a,'Q'	; exit
+		jr	z,halt
+		jr	loop1
 
 trn_r:
-	ld	hl,hero_d
-	inc	(hl)
-	ld	a,(hl)
-	cp	a,WEST+1
-	jr	nz,refresh
-	ld	(hl),NORTH
-	jp	refresh
+		ld	hl,hero_d
+		inc	(hl)
+		ld	a,(hl)
+		cp	a,WEST+1
+		jr	nz,refresh
+		ld	(hl),NORTH
+		jp	refresh
 trn_l:
-	ld	hl,hero_d
-	dec	(hl)
-	ld	a,(hl)
-	cp	a,NORTH-1
-	jp	nz,refresh
-	ld	(hl),WEST
-	jp	refresh
+		ld	hl,hero_d
+		dec	(hl)
+		ld	a,(hl)
+		cp	a,NORTH-1
+		jp	nz,refresh
+		ld	(hl),WEST
+		jp	refresh
 left:
-	ld	a,WEST
-	ld	(hero_d),a	
-	jp	ismove
+		ld	a,WEST
+		ld	(hero_d),a	
+		jp	ismove
 down:	
-	ld	a,SOUTH
-	ld	(hero_d),a	
-	jp	ismove
+		ld	a,SOUTH
+		ld	(hero_d),a	
+		jp	ismove
 up:	
-	ld	a,NORTH
-	ld	(hero_d),a	
-	jp	ismove
+		ld	a,NORTH
+		ld	(hero_d),a	
+		jp	ismove
 right:	
-	ld	a,EAST
-	ld	(hero_d),a	
-	jp	ismove
+		ld	a,EAST
+		ld	(hero_d),a	
+		jp	ismove
 	
 ;------------------------	
 ; Wyjscie do CP/M
 ;------------------------
 halt:
-	clear_screen
-	print_string	'Thank You for playing Dungeology.'		
+		clear_screen
+		print_string	'Thank You for playing Dungeology.'		
 	
 ; Zamyka plik
-close:	ld	de,fcb
-	ld	c,fclose
-	call	BDOS
+close:		ld	de,fcb
+		ld	c,fclose
+		call	BDOS
 	
-exit:	ret
+exit:		ret
 
 ;--------------------------
 ; Zmienia pozycje Hero
 ;--------------------------
 move:
 ;	push	hl		; adres nowej pamieci Hero
-	ld	a,(hero_o)	; / save
-	add	a,e		;|  Hero
-	ld	(hero_o),a	; \ new offset
+		ld	a,(hero_o)	; / save
+		add	a,e		;|  Hero
+		ld	(hero_o),a	; \ new offset
 
 ;	ld	a,(hero_m)	;
 ;	ld	e,a		; Stara pamiec Hero
-	ld	e,FLOOR
-	ld	c,PRTCHR	; na ekran
-	call	BDOS
+		ld	e,FLOOR
+		ld	c,PRTCHR	; na ekran
+		call	BDOS
 
 ; 	pop	hl
 ;	ld	a,(hl)
 ;	ld	(hero_m),a
 	
 
-	ld	hl,hero_s	; /
-	ld	a,(hero_d)	; Przesuniecie kursora
-	sla	a		; do nowej pozycji
-	ld	e,a		; Hero
-	ld	d,00h
-	add	hl,de 
-	ld	a,(hero_y)
-	add	a,(hl)
-	ld	(hero_y),a
-	inc	hl
-	ld	a,(hero_x)
-	add	a,(hl)
-	ld	(hero_x),a	; \____________
+		ld	hl,hero_s	; /
+		ld	a,(hero_d)	; Przesuniecie kursora
+		sla	a		; do nowej pozycji
+		ld	e,a		; Hero
+		ld	d,00h
+		add	hl,de 
+		ld	a,(hero_y)
+		add	a,(hl)
+		ld	(hero_y),a
+		inc	hl
+		ld	a,(hero_x)
+		add	a,(hl)
+		ld	(hero_x),a	; \____________
 
-	ret
+		ret
 ;--------------------------------------
 ; Funkcja przesuwa kursor do x=D i y=E
 ;--------------------------------------
 crsmov::
-	ld	a,e
-	call	h2asci
-	ld	(_y),bc
-	ld	a,d
-	call	h2asci
-	ld	(_x),bc
-	ld	c,PRTSTR
-	ld	de,crspos
-	call	BDOS
-	ret
+		ld	a,e
+		call	h2asci
+		ld	(_y),bc
+		ld	a,d
+		call	h2asci
+		ld	(_x),bc
+		ld	c,PRTSTR
+		ld	de,crspos
+		call	BDOS
+		ret
 
 ;-----------------------------
 ; Funkja zamienia liczbe w A
@@ -290,46 +290,46 @@ crsmov::
 ; np.0Fh -> C=1, B=5
 ;-----------------------------
 h2asci:
-	ld	c,0
-loop:	ld	b,a
-	cp	a,10
-	jr	c,fine	;jesli a<10 koniec
-	inc	c
-	sub	a,10
-	jr	loop
-fine:	add	a,'0'
-	ld	b,a
-	ld	a,c
-	add	a,'0'
-	ld	c,a
-	ret
+		ld	c,0
+loop:		ld	b,a
+		cp	a,10
+		jr	c,fine	;jesli a<10 koniec
+		inc	c
+		sub	a,10
+		jr	loop
+fine:		add	a,'0'
+		ld	b,a
+		ld	a,c
+		add	a,'0'
+		ld	c,a
+		ret
 ;-----------------------------------------
 ; Funkja wypluwa w HL - adres , a
 ; w A - char Tile bezposrednio przed Hero 
 ;-----------------------------------------
 right_before:
-	ld	hl,MAP##
-	ld	de,(hero_o)
-	ld	d,00h
-	add	hl,de		; adres tile Hero
-	ld	ix,tile_o
-	ld	de,(hero_d)
-	ld	d,00h
-	add	ix,de		; adres przesuniecia
-	ld	e,(ix)
-	bit	7,e
-	jr	z,addit
-	ld	d,0FFh
-addit:	add	hl,de		; ADRES TILE PRZED HERO !
-	ld	a,(hl)
-	ret
+		ld	hl,MAP##
+		ld	de,(hero_o)
+		ld	d,00h
+		add	hl,de		; adres tile Hero
+		ld	ix,tile_o
+		ld	de,(hero_d)
+		ld	d,00h
+		add	ix,de		; adres przesuniecia
+		ld	e,(ix)
+		bit	7,e
+		jr	z,addit
+		ld	d,0FFh
+addit:		add	hl,de		; ADRES TILE PRZED HERO !
+		ld	a,(hl)
+		ret
 
 ;===========================================================================================
 DSEG
 
-fcb	db	0
-	db	'MAP     DAT'
-	ds	24
+fcb		db	0
+		db	'MAP     DAT'
+		ds	24
 ;------ hero ----------
 hero_y::	db	06h
 hero_x::	db	06h	
