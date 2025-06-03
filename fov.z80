@@ -1,0 +1,330 @@
+BDOS		equ	05h
+PRTCHR		equ	02h
+DELIM		equ	0FFh
+WALL_CHAR	equ	'#'
+C_DOOR		equ	'+'
+O_DOOR		equ	'/'
+FLOOR_CHAR	equ	' '
+PREV_WALL	equ	'.'
+
+CSEG
+;=============
+field_of_view::
+;=============
+	; Ustawienie wskaznika dla offsetow koordynatow tiles
+		ld	hl,fov_coords
+		ld	a,(hero_d##)
+		sla	a
+		ld	b,a			; d x 2 zapisany do dodania
+		sla	a
+		sla	a
+		sla	a			; 16 x d
+		add	a,b			; 18 x d  ( dla offsets )
+		push	af			; save dla offsets
+
+		sla	a			; 36 x d ( dla coords )	
+		ld	d,0
+		ld	e,a
+		add	hl,de			; wskaznik coords
+		ld	(coords_pointer),hl	; zapisany
+
+	; Ustawienie wkaznika dla offsetow tiles	
+		ld	hl,fov_offsets
+		pop	af		; restore
+		ld	d,0
+		ld	e,a
+		add	hl,de			; wskaznik na offset tile 
+		ld	(offset_pointer),hl	; wzgledem Hero
+
+	; Ustawienie wskaznika dla fov_list
+		ld	ix,fov_list
+
+	; Ustawienie wskaznika dla map_position
+		ld	iy,map_position##
+
+	; Dodanie offsetow koordynatow do koordynatow Hero	
+		ld	b,12h			; 18 przebiegow petli
+.setdataloop:	push	bc			; SAVE licznik
+		ld	(ix),00h
+		ld	(ix+1),00h
+		ld	(ix+2),00h
+		ld	hl,(coords_pointer)
+		; Y
+		ld	e,(hl)			; offset Y tile
+		ld	a,(hero_y##)
+		add	a,e			; dodatnie Y Hero
+		cp	a,1			; jesli Y tile
+		jr	c,out1			; poza rozmiarem mapy to
+		cp	a,09h			; konczymy ten przebieg 
+		jr	nc,out1
+
+		add	a,(iy)			; dodanie przesuniecia Y mapy
+		ld	(ix),a			; do Y tile i zapis do fov_list
+		inc	hl
+		; X
+		ld	d,(hl)			; offset X tile
+		ld	a,(hero_x##)
+		add	a,d			; dodatnie X Hero
+		cp	a,1			; jesli X tile
+		jr	c,out2			; poza rozmiarem mapy to				
+		cp	a,11h			; konczymy ten przebieg 
+		jr	nc,out2
+
+		add	a,(iy+1)		; dodanie przesuniecia X mapy
+		ld	(ix+1),a		; do X tile i zapis do fov_list
+
+	; ASCII char
+		ld	hl,(offset_pointer)
+		ld	e,(hl)		
+		ld	a,(hero_o##)		
+		add	a,e			; dodanie przesuniecia Hero
+		ld	hl,MAP##
+		ld	e,a			; dodanie tej sumy przesuniec
+		ld	d,00h			; Tile i Hero do adresu MAPy
+		add	hl,de			; i odczytanie z MAPy char 
+		ld	a,(hl)			; Tile i zapisanie tego
+		ld	(ix+2),a		; char (Tile) na liscie fov
+
+	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
+	; i wskaznika listy FOV
+		ld	hl,(coords_pointer)
+	out1:	inc	hl
+	out2:	inc	hl
+		ld	(coords_pointer),hl
+		ld	hl,(offset_pointer)
+		inc	hl
+		ld	(offset_pointer),hl
+		inc	ix
+		inc	ix
+		inc	ix	
+
+		pop	bc			; RESTORE licznik
+		djnz	.setdataloop
+	
+	; ----------------------------------------------------
+	; - Petla wyswietlajaca FOV i zapisujaca do prev_fov -
+	; ----------------------------------------------------
+		ld	b,18			; ilosc mozliwych pol widzenia
+	; Ustawienie wskaznikow
+		ld	hl,prev_fov_list
+		ld	(iterator),hl
+.printloop:
+		push	bc
+
+		ld	hl,count_order		; podmiana licznika na liczacy
+		ld	e,b			; z dwoch stron fov do srodka
+		ld	d,0
+		add	hl,de			; w hl adres nowego licznika
+
+		ld	a,(hl)			; Tylko dla Tile od 18 do 6
+		ld	(main_counter),a
+		cp	a,6			; spradza czy Tile widoczny
+		jp	nc,is_visible		; Reszta zawsze widoczna.
+	vsbl:
+		; Ustawienie kursora
+		ld	hl,fov_list_end
+		ld	a,(main_counter)
+		ld	b,a
+		sla	a
+		add	a,b			; licznik x 3
+		ld	e,a
+		and	a			; carry  0	
+		sbc	hl,de			; Adres ( Y, X, char )
+		push	hl
+		pop	ix	
+		
+		ld	e,(ix)
+		ld	d,(ix+1)	
+		; Kopia Y i X tile do prev_fov_list
+		ld	hl,(iterator)
+		ld	(hl),e
+		inc	hl
+		ld	(hl),d
+		inc	hl
+		ld	a,(ix+2)
+		push	af			; Save Tile.char
+		ld	(hl),a
+		inc	hl
+		ld	(iterator),hl
+
+		call	crsmov##
+
+		; Tile na ekran	
+		ld	e,(ix+2)
+		ld	c,PRTCHR
+		call	BDOS
+		; Print 3D
+		pop	af			; Restore Tile.char
+		cp	a,WALL_CHAR
+		call	z,printwall_3d##	; Sprite na ekran
+		cp	a,C_DOOR
+		call	z,print_c_door_3d##	; Sprite na ekran
+		cp	a,O_DOOR
+		call	z,print_o_door_3d##	; Sprite na ekran
+
+	out3:	pop	bc
+		djnz	.printloop			
+		ld	hl,(iterator)
+		ld	(hl),DELIM
+		ret
+;-----------------------------------
+; Sprawdza czy Tile jest widoczny
+; ( w A jest licznil petli funkji wywolujacej )
+;-----------------------------------	
+is_visible:
+		ld	b,3			; 3 przebiegi petli
+		sub	a,6			; brak zaslon dla pierwszych 5  
+		ld	c,a			; save i
+		sla	a			; i x 2	
+		add	a,c			; i x 3 (3 potencjalne zaslony)
+		ld	hl,list_indexes
+		ld	e,a
+	;	ld	d,0
+		add	hl,de			; wskaznik na index zaslony
+	three:	ld	a,(hl)	
+		cp	a,0
+		jp	z,vsbl			; jak 0 - wypad
+		ld	c,a			; Save index
+		sla	a
+		add	a,c			; index x 3 ( y,x,char )
+		ld	iy,fov_list		; od tego liczymy offsety
+		ld	e,a
+	;	ld	d,0
+		add	iy,de
+		ld	a,(iy+2)		; Tile.char do sprawdzenia!
+		cp	a,WALL_CHAR
+		jp	z,out3
+		cp	a,'+'
+		jp	z,out3
+		inc	hl
+		djnz	three	
+		jp	vsbl	
+
+;=============
+prev_fov::
+;=============
+		ld	b,18			; 16 przebiegow + DELIM
+		ld	ix,prev_fov_list
+.pfovloop:	push	bc
+		ld	a,(ix)
+		cp	a,DELIM
+		jr	nz,prtbl
+		pop	bc
+		jr	out4
+	prtbl:	ld	e,a
+		ld	d,(ix+1)
+		call	crsmov
+		ld	e,FLOOR_CHAR
+		ld	a,(ix+2)
+		cp	a,WALL_CHAR		; jesli nie sciana
+		jr	nz,prtspc		; drukuje spacje 
+		ld	e,PREV_WALL
+	prtspc:	ld	c,PRTCHR
+		call	BDOS	
+		inc	ix
+		inc	ix
+		inc	ix	
+		pop	bc
+		djnz	.pfovloop
+	out4:	ret
+
+DSEG	
+main_counter::	db	0
+;-------------------------------------------------------
+; Sprite musza byc wyswietlane od zewnatrz fov do srodka
+; Stad petla jedzie z dwoch stron do srodka. Rzeczywisty
+; Licznik ( od 18 do 1 ) jest dodawany do tego adresu 
+; i zdereferowany.
+;-----------------------------------------------------
+count_order	db 	0,1,2
+		db	4,3,5
+		db	7,6,8
+		db	11,10,12,9,13
+		db	16,15,17,14,18
+
+;-----------------------------------------------------
+; Indexy listy fov_list do sprawdzania czy jest tam
+; cos, co zaslania ten Tile's
+;-----------------------------------------------------
+list_indexes   ; indeksy fov_list  | iteracje petli
+		db	14, 0,0		;06
+		db	14, 0,0		;07
+		db	14, 0,0		;08
+		db	15,12,0		;09
+		db	14,12,0		;10
+		db	14,11,0		;11
+		db	14,10,0		;12
+		db	13,10,0		;13
+		db	15,12,8		;14
+		db	14,12,8		;15
+		db	14,11,7		;16
+		db	14,10,6		;17
+		db	13,10,6		;18
+;-----------------------------------------
+; Lista obiektow wszystkich obiektow tile
+; potencjalnie widocznych dla Hero
+;-----------------------------------------	
+fov_list	ds	54			; ( Y, X, Offset ) x 18
+fov_list_end	
+prev_fov_list	ds	55			; jw. + DELIM
+iterator	dw	0000h			; iterator list
+
+; -----------------------------
+; Offset'y tiles wzgledem Hero
+; -----------------------------
+fov_offsets
+		db	-74,-73,-72,-71,-70	;+-----	
+		db	-56,-55,-54,-53,-52	;|
+		db	    -37,-36,-35    	;| North
+		db	    -19,-18,-17		;| 
+		db	      -1,  1	    	;+----- 
+		
+		db	-32,-14,4,22,40		;+-----
+		db	-33,-15,3,21,39		;|
+		db	    -16,2,20   		;| East
+		db	    -17,1,19		;|
+		db	    -18,  18		;+-----
+
+		db	74,73,72,71,70		;+-----	
+		db	56,55,54,53,52		;|
+		db	   37,36,35   		;| South
+		db	   19,18,17		;| 
+		db	    1,  -1	    	;+----- 
+		
+		db	32,14,-4,-22,-40	;+-----
+		db	33,15,-3,-21,-39	;|
+		db	   16,-2,-20    	;| West
+		db	    17,-1,-19		;|
+		db	    18,  -18		;+-----
+
+; Przesuniecia koordynatow tiles wzgledem Hero
+fov_coords
+		db	-4,-2,  -4,-1,  -4,0,  -4,1,  -4,2		
+		db	-3,-2,  -3,-1,  -3,0,  -3,1,  -3,2		
+		db	        -2,-1,  -2,0,  -2,1
+		db	        -1,-1,  -1,0,  -1,1
+		db	         0,-1,          0,1
+
+		db	-2,4,  -1,4,  0,4,  1,4,  2,4
+		db	-2,3,  -1,3,  0,3,  1,3,  2,3
+		db	       -1,2,  0,2,  1,2
+		db	       -1,1,  0,1,  1,1
+		db	       -1,0,        1,0
+
+		
+		db	 4,2,  4,1,  4,0,  4,-1,  4,-2		
+		db	 3,2,  3,1,  3,0,  3,-1,  3,-2		
+		db	       2,1,  2,0,  2,-1
+		db	       1,1,  1,0,  1,-1
+		db	       0,1,        0,-1
+
+		db	 2,-4,  1,-4,  0,-4,  -1,-4,  -2,-4
+		db	 2,-3,  1,-3,  0,-3,  -1,-3,  -2,-3
+		db	        1,-2,  0,-2,  -1,-2
+		db	        1,-1,  0,-1,  -1,-1
+		db	        1,0,        -1,0
+; Pola wskaznikow
+coords_pointer:	dw	0000h
+offset_pointer:	dw	0000h
+counter		db	00h
+
