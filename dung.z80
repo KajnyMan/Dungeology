@@ -140,6 +140,7 @@ refresh:
 		ld	hl,(map_position)
 		add	hl,de
 		ex	de,hl
+		push	de
 		call	crsmov
 		ld	hl,hero_i	; ikona hero
 		ld	a,(hero_d)	; w zaleznosci
@@ -152,10 +153,7 @@ refresh:
 ;		ld	(hero_c),a	; temp KOPIA IKONY
 		call	BDOS
 
-		ld	de,(hero_y)
-		ld	hl,(map_position)
-		add	hl,de
-		ex	de,hl
+		pop	de
 		call	crsmov		; cofa kursor
 		show_cursor
 	
