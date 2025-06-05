@@ -11,7 +11,7 @@ setdma	equ	1Ah
 rdseq	equ	14h
 reclen	equ	80h
 fclose	equ	10h
-;reclen	equ	80h
+reclen	equ	80h
 NORTH	equ	00h
 EAST	equ	01h
 SOUTH	equ	02h
