@@ -83,15 +83,27 @@ readed:
 		ld	a,(hero_y)
 		dec	a
 		ld	c,a
-		sla	c		; clrf offset
-		ld	b,04h		; x 16
-mult1:		sla	a		; Y offset
-		djnz	mult1
-		add	a,c		; Y + crlf
-		ld	hl,hero_x
-		add	a,(hl)		; Y + crlf + X 
+		ld	a,(map_width)
+		call	mul8##
+		ld	a,(hero_x)
 		dec	a
+		ex	de,hl
+		add	a,e		
 		ld	(hero_o),a
+; Dodaje offset przesuniecia MAP'y wzgledem gornego lewego rogu
+		ld	de,(map_position)
+		ld	hl,(hero_y)
+		add	hl,de
+		ld	(hero_y),hl 
+; Oblicza i wypelnia tabele move_offsets
+
+		ld	ix,move_offsets
+		ld	a,(map_width)
+		ld	(ix+2),a
+		neg
+		ld	(ix),a
+		
+		call	calc_fov##	
 
 	hide_cursor
 
@@ -137,9 +149,6 @@ refresh:
 		; Hero na ekran	
 		; --------------
 		ld	de,(hero_y)
-		ld	hl,(map_position)
-		add	hl,de
-		ex	de,hl
 		push	de
 		call	crsmov
 		ld	hl,hero_i	; ikona hero
@@ -149,8 +158,6 @@ refresh:
 		add	hl,de		; ^ > v <
 		ld	c,PRTCHR
 		ld	e,(hl)
-;		ld	a,e		; temp
-;		ld	(hero_c),a	; temp KOPIA IKONY
 		call	BDOS
 
 		pop	de
@@ -232,25 +239,18 @@ close:		ld	de,fcb
 	
 exit:		ret
 
-;--------------------------
+;-------------------------------------------------
 ; Zmienia pozycje Hero
-;--------------------------
+; w E ma byc przesuniecie na MAP'ie nowej pozycji
+;-------------------------------------------------
 move:
-;	push	hl		; adres nowej pamieci Hero
 		ld	a,(hero_o)	; / save
 		add	a,e		;|  Hero
 		ld	(hero_o),a	; \ new offset
 
-;	ld	a,(hero_m)	;
-;	ld	e,a		; Stara pamiec Hero
 		ld	e,FLOOR
 		ld	c,PRTCHR	; na ekran
 		call	BDOS
-
-; 	pop	hl
-;	ld	a,(hl)
-;	ld	(hero_m),a
-	
 
 		ld	hl,hero_s	; /
 		ld	a,(hero_d)	; Przesuniecie kursora
@@ -310,7 +310,7 @@ right_before:
 		ld	de,(hero_o)
 		ld	d,00h
 		add	hl,de		; adres tile Hero
-		ld	ix,tile_o
+		ld	ix,move_offsets
 		ld	de,(hero_d)
 		ld	d,00h
 		add	ix,de		; adres przesuniecia
@@ -328,6 +328,9 @@ DSEG
 fcb		db	0
 		db	'MAP     DAT'
 		ds	24
+;------ map -----------
+map_height::	db	8
+map_width::	db	18
 ;------ hero ----------
 hero_y::	db	06h
 hero_x::	db	06h	
@@ -337,10 +340,10 @@ hero_i		db	'^','>','v','<'	; ikony Hero
 ; hero_c		db	00h		; biezaca ikona Hero
 ; hero_m		db	20h		; pamiec Hero
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
-tile_o		db	-18,1,18,-1
+move_offsets	db	0,1,0,-1
 ;------- Windows ---------
-map_position::	db	01h,1Eh	
-w3d_position::	db	0Ch,1Bh
+map_position::	db	 1,30	
+w3d_position::	db	12,27
 ;--------------------------------
 ;--- VT-100 Terminal  ESC seq ---
 ;--------------------------------

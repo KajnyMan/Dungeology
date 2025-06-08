@@ -1,0 +1,33 @@
+;
+; Funkje matematyczne
+;
+
+; --------------------------------
+; Mnozenie dwoch liczb 8-bitowych
+; Czynniki w A i C. Iloczyn w HL
+; --------------------------------
+mul8::		ld	hl,0
+		ld	b,8
+		ld	d,0
+		ld	e,a
+	nxtbit:	bit	0,c
+		jr	z,noadd
+		add	hl,de
+	noadd:	srl	c
+		sla	e
+		rl	d
+		djnz	nxtbit
+		ret
+		
+; -----------------------------------
+; Mnozenie takich liczb aby iloczyn 
+; byl 8-bitowy. 
+; czynniki: B,C   iloczyn: A
+; -----------------------------------
+mulproduct8::
+		push	bc
+		ld	a,0
+	nxtadd:	add a,c
+		djnz nxtadd
+		pop	bc
+		ret
