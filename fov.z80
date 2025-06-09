@@ -41,7 +41,7 @@ field_of_view::
 		ld	ix,fov_list
 
 	; Ustawienie wskaznika dla map_position
-;		ld	iy,map_position##
+		ld	iy,borders##
 
 	; Dodanie offsetow koordynatow Tiles do koordynatow Hero	
 		ld	b,12h			; 18 przebiegow petli
@@ -54,9 +54,9 @@ field_of_view::
 		ld	e,(hl)			; offset Y tile
 		ld	a,(hero_y##)
 		add	a,e			; dodatnie Y Hero
-		cp	a,2			; jesli Y tile
+		cp	a,(iy)			; jesli Y tile
 		jr	c,out1			; poza rozmiarem mapy to
-		cp	a,39			; konczymy ten przebieg 
+		cp	a,(iy+1)		; konczymy ten przebieg 
 		jr	nc,out1
 
 ;		add	a,(iy)			; dodanie przesuniecia Y mapy
@@ -66,9 +66,9 @@ field_of_view::
 		ld	d,(hl)			; offset X tile
 		ld	a,(hero_x##)
 		add	a,d			; dodatnie X Hero
-		cp	a,2			; jesli X tile
+		cp	a,(iy+2)		; jesli X tile
 		jr	c,out2			; poza rozmiarem mapy to				
-		cp	a,39h			; konczymy ten przebieg 
+		cp	a,(iy+3)		; konczymy ten przebieg 
 		jr	nc,out2
 
 ;		add	a,(iy+1)		; dodanie przesuniecia X mapy
@@ -234,9 +234,8 @@ prev_fov::
 ; potencjalnie widzialnych Tiles - fov_offsets 
 ; -------------------------------------------------------
 calc_fov::
-		;--- EAST & NORTH ---
+		; --- EAST & NORTH --- 
 		ld	iy,fov_n + 2	
-
 		ld	ix,fov_e + 2
 		ld	b,4			; glebokosc fov
 		ld	d,0
@@ -249,16 +248,15 @@ calc_fov::
 		sub	a,c
 		ld	(ix-1),a
 		ld	(ix),b
-;			----
-	call	mulproduct8##
-	neg
-	ld	(iy),a
-	ld	d,a
-	dec	d
-	inc	a
-	ld	(iy-1),d	
-	ld	(iy+1),a
-	ld	d,0
+		call	mulproduct8##
+		neg
+		ld	(iy),a
+		ld	d,a
+		dec	d
+		inc	a
+		ld	(iy-1),d	
+		ld	(iy+1),a
+		ld	d,0
 		ld	a,b
 		cp	a,3
 		jr	c,ommit1
@@ -268,13 +266,12 @@ calc_fov::
 		ld	a,(ix-1)
 		sub	a,c
 		ld	(ix-2),a
-	ld	a,(iy-1)
-	dec	a
-	ld	(iy-2),a
-	ld	a,(iy+1)
-	inc	a
-	ld	(iy+2),a
-		
+		ld	a,(iy-1)
+		dec	a
+		ld	(iy-2),a
+		ld	a,(iy+1)
+		inc	a
+		ld	(iy+2),a
 	ommit1:
 		add	ix,de
 		add	iy,de
@@ -284,9 +281,8 @@ calc_fov::
 		ld	(ix+1),a
 		neg
 		ld	(ix),a
-	ld	(iy),-1
-	ld	(iy+1),1
-
+		ld	(iy),-1
+		ld	(iy+1),1
 		;--- WEST & SOUTH ---
 		ld	hl,fov_n
 		ld	de,fov_s
@@ -297,7 +293,6 @@ calc_fov::
 		inc	hl
 		inc	de
 		djnz	nxt1
-		
 		ret
 DSEG	
 main_counter::	db	0
@@ -331,49 +326,25 @@ list_indexes   ; indeksy fov_list  | iteracje petli
 		db	14,11,7		;16
 		db	14,10,6		;17
 		db	13,10,6		;18
-;-----------------------------------------
-; Lista obiektow wszystkich obiektow tile
-; potencjalnie widocznych dla Hero
-;-----------------------------------------	
+;--------------------------------------------------------------------------
+; Lista obiektow wszystkich obiektow tile potencjalnie widocznych dla Hero
+;--------------------------------------------------------------------------
 fov_list	ds	54			; ( Y, X, Offset ) x 18
 fov_list_end	
 prev_fov_list	ds	55			; jw. + DELIM
 iterator	dw	0000h			; iterator list
 
-; -----------------------------
-; Offset'y tiles wzgledem Hero
-; -----------------------------
+; -----------------------------------------------------------------
+; Offset'y tiles wzgledem Hero - wypelniane przez funkcje calc_fov
+; -----------------------------------------------------------------
 fov_offsets::
-	fov_n:	ds	18
-;		db	-74,-73,-72,-71,-70	;+-----	
-;		db	-56,-55,-54,-53,-52	;|
-;		db	    -37,-36,-35    	;| North
-;		db	    -19,-18,-17		;| 
-;		db	     -1,  1	    	;+----- 
-
-
-	fov_e:	ds	18		
-;		db	-32,-14,4,22,40		;+-----
-;		db	-33,-15,3,21,39		;|
-;		db	    -16,2,20   		;| East
-;		db	    -17,1,19		;|
-;		db	    -18,  18		;+-----
-
-	fov_s:	ds	18
-;		db	74,73,72,71,70		;+-----	
-;		db	56,55,54,53,52		;|
-;		db	   37,36,35   		;| South
-;		db	   19,18,17		;| 
-;		db	    1,  -1	    	;+----- 
-		
-	fov_w:	ds	18	
-;		db	32,14,-4,-22,-40	;+-----
-;		db	33,15,-3,-21,-39	;|
-;		db	   16,-2,-20    	;| West
-;		db	   17,-1,-19		;|
-;		db	   18,  -18		;+-----
-
-; Przesuniecia koordynatow tiles wzgledem Hero
+	fov_n:	ds	18 			; North
+	fov_e:	ds	18			; East	
+	fov_s:	ds	18			; South
+	fov_w:	ds	18			; West	
+; -----------------------------------------------------
+; Przesuniecia koordynatow tiles wzgledem Hero - stale
+; -----------------------------------------------------
 fov_coords
 		db	-4,-2,  -4,-1,  -4,0,  -4,1,  -4,2		
 		db	-3,-2,  -3,-1,  -3,0,  -3,1,  -3,2		
@@ -399,6 +370,7 @@ fov_coords
 		db	        1,-2,  0,-2,  -1,-2
 		db	        1,-1,  0,-1,  -1,-1
 		db	        1,0,        -1,0
+
 ; Pola wskaznikow
 coords_pointer:	dw	0000h
 offset_pointer:	dw	0000h

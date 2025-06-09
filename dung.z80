@@ -90,11 +90,26 @@ readed:
 		ex	de,hl
 		add	a,e		
 		ld	(hero_o),a
-; Dodaje offset przesuniecia MAP'y wzgledem gornego lewego rogu
+; Dodaje do Y i X Hero przesuniecie MAP'y
 		ld	de,(map_position)
 		ld	hl,(hero_y)
 		add	hl,de
 		ld	(hero_y),hl 
+; Oblicza granice widzialnosci Tiles
+		ld	ix,borders
+		ld	a,(map_position)	
+		inc	a
+		ld	(ix),a
+		ld	hl,map_height
+		add	a,(hl)
+		ld	(ix+1),a
+		ld	a,(map_position + 1)
+		inc	a
+		ld	(ix+2),a
+		inc	hl
+		add	a,(hl)
+		sub	a,2			; crlf 
+		ld	(ix+3),a
 ; Oblicza i wypelnia tabele move_offsets
 
 		ld	ix,move_offsets
@@ -331,6 +346,13 @@ fcb		db	0
 ;------ map -----------
 map_height::	db	8
 map_width::	db	18
+;---- windows ---------
+map_position::	db	 1,30		; wzgl lew-gorn rogu terminala	
+w3d_position::	db	12,27
+; -------------------------------------
+; granice windocznosci tiles MAP'y <- liczone przy starcie 
+; -------------------------------------
+borders::	ds	4		; Ymin, Ymax, Xmin, Xmax 
 ;------ hero ----------
 hero_y::	db	06h
 hero_x::	db	06h	
@@ -341,9 +363,6 @@ hero_i		db	'^','>','v','<'	; ikony Hero
 ; hero_m		db	20h		; pamiec Hero
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 move_offsets	db	0,1,0,-1
-;------- Windows ---------
-map_position::	db	 1,30	
-w3d_position::	db	12,27
 ;--------------------------------
 ;--- VT-100 Terminal  ESC seq ---
 ;--------------------------------
