@@ -104,6 +104,30 @@ readed:
 	out2:	ld	a,b
 		ld	(map_height),a
 			
+; Odczytuje z mapy pozycje i orientacje Hero i zapisuje tam gdzie trzeba
+		ld	b,2
+		ld	de,hero_y
+	nxtcrd:	inc	hl			; 
+		ld	a,(hl)			; pierwszy obrot Y	
+		and	0Fh			; drugi X
+		or	a			;
+		jr	z,omt1
+		ld	a,0Ah
+	omt1:	ld	c,a
+		inc	hl
+		ld	a,(hl)
+		and	0Fh
+		add	a,c
+		ld	(de),a
+		inc	de
+		inc	hl
+		djnz	nxtcrd
+		inc	hl			;
+		ld	a,(hl)			; Orientacja Hero
+		and	0Fh			; przy starcie
+		ld	(de),a			;
+		
+
 ; Oblicza offset hero wzgledem poczatku MAP'y
 		ld	a,(hero_y)
 		dec	a
@@ -115,11 +139,13 @@ readed:
 		ex	de,hl
 		add	a,e		
 		ld	(hero_o),a
+
 ; Dodaje do Y i X Hero przesuniecie MAP'y
 		ld	de,(map_position)
 		ld	hl,(hero_y)
 		add	hl,de
 		ld	(hero_y),hl 
+
 ; Oblicza granice widzialnosci Tiles
 		ld	ix,borders
 		ld	a,(map_position)	
@@ -135,6 +161,7 @@ readed:
 		add	a,(hl)
 		sub	a,2			; crlf 
 		ld	(ix+3),a
+
 ; Oblicza i wypelnia tabele move_offsets
 
 		ld	ix,move_offsets
@@ -159,6 +186,7 @@ ismove:		call	right_before
 		jp	z,loop1
 		call	move
 		jp	refresh
+
 ;------------------------------------------
 ; Funkcja otwierajaca lub zamykajaca drzwi
 ;------------------------------------------
@@ -381,13 +409,11 @@ w3d_position::	db	12,27
 ; -------------------------------------
 borders::	ds	4		; Ymin, Ymax, Xmin, Xmax 
 ;------ hero ----------
-hero_y::	db	06h
-hero_x::	db	06h	
+hero_y::	db	00h		; inicjalizowane przy starcie
+hero_x::	db	00h		; na pdst map.dat	
+hero_d::	db	00h	
 hero_o::	db	00h		; offset wzgl .MAP
-hero_d::	db	NORTH
 hero_i		db	'^','>','v','<'	; ikony Hero
-; hero_c		db	00h		; biezaca ikona Hero
-; hero_m		db	20h		; pamiec Hero
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 move_offsets	db	0,1,0,-1
 ;--------------------------------
