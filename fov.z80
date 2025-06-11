@@ -22,7 +22,6 @@ field_of_view::
 		sla	a			; 16 x d
 		add	a,b			; 18 x d  ( dla offsets )
 		push	af			; save dla offsets
-
 		sla	a			; 36 x d ( dla coords )	
 		ld	d,0
 		ld	e,a
@@ -59,7 +58,6 @@ field_of_view::
 		cp	a,(iy+1)		; konczymy ten przebieg 
 		jr	nc,out1
 
-;		add	a,(iy)			; dodanie przesuniecia Y mapy
 		ld	(ix),a			; do Y tile i zapis do fov_list
 		inc	hl
 		; X
@@ -70,8 +68,6 @@ field_of_view::
 		jr	c,out2			; poza rozmiarem mapy to				
 		cp	a,(iy+3)		; konczymy ten przebieg 
 		jr	nc,out2
-
-;		add	a,(iy+1)		; dodanie przesuniecia X mapy
 		ld	(ix+1),a		; do X tile i zapis do fov_list
 
 	; ASCII char

@@ -173,7 +173,6 @@ readed:
 ; Oblicza i wypelnia tabele fov_offsets
 		call	calc_fov##	
 
-
 	hide_cursor
 
 		jr	begin
@@ -371,6 +370,7 @@ fine:		add	a,'0'
 		add	a,'0'
 		ld	c,a
 		ret
+
 ;-----------------------------------------
 ; Funkja wypluwa w HL - adres , a
 ; w A - char Tile bezposrednio przed Hero 
