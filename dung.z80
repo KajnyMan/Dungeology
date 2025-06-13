@@ -136,9 +136,10 @@ readed:
 		call	mul8##
 		ld	a,(hero_x)
 		dec	a
-		ex	de,hl
-		add	a,e		
-		ld	(hero_o),a
+		ld	d,0
+		ld	e,a
+		add	hl,de	
+		ld	(hero_o),hl
 
 ; Dodaje do Y i X Hero przesuniecie MAP'y
 		ld	de,(map_position)
@@ -162,9 +163,9 @@ readed:
 		sub	a,2			; crlf 
 		ld	(ix+3),a
 
-; Oblicza i wypelnia tabele move_offsets
+; Oblicza i wypelnia tabele neighbor_offs
 
-		ld	ix,move_offsets
+		ld	ix,neighbor_offs
 		ld	a,(map_width)
 		ld	(ix+2),a
 		neg
@@ -310,12 +311,10 @@ exit:		ret
 
 ;-------------------------------------------------
 ; Zmienia pozycje Hero
-; w E ma byc przesuniecie na MAP'ie nowej pozycji
+; w DE ma byc nowa pozycja ( offset wzgl. MAP )
 ;-------------------------------------------------
 move:
-		ld	a,(hero_o)	; / save
-		add	a,e		;|  Hero
-		ld	(hero_o),a	; \ new offset
+		ld	(hero_o),de	; Hero new offset
 
 		ld	e,FLOOR
 		ld	c,PRTCHR	; na ekran
@@ -372,24 +371,26 @@ fine:		add	a,'0'
 		ret
 
 ;-----------------------------------------
-; Funkja wypluwa w HL - adres , a
+; Funkja wypluwa:
 ; w A - char Tile bezposrednio przed Hero 
+; e E - jego OFFSET wzgl. MAP
+; w HL - jego ADRESS 
 ;-----------------------------------------
 right_before:
-		ld	hl,MAP##
-		ld	de,(hero_o)
-		ld	d,00h
-		add	hl,de		; adres tile Hero
-		ld	ix,move_offsets
+		ld	hl,neighbor_offs
 		ld	de,(hero_d)
 		ld	d,00h
-		add	ix,de		; adres przesuniecia
-		ld	e,(ix)
+		add	hl,de		; adres offset'u Tile wzgl Hero
+		ld	e,(hl)
 		bit	7,e
 		jr	z,addit
 		ld	d,0FFh
-addit:		add	hl,de		; ADRES TILE PRZED HERO !
-		ld	a,(hl)
+	addit:	ld	hl,(hero_o)
+		add	hl,de	
+		ex	de,hl		; offset Tile wzgl mapy 
+		ld	hl,MAP##
+		add	hl,de		; ADRES TILE PRZED HERO !
+		ld	a,(hl)		; a w A jego ikona (ascii)
 		ret
 
 ;===========================================================================================
@@ -412,10 +413,10 @@ borders::	ds	4		; Ymin, Ymax, Xmin, Xmax
 hero_y::	db	00h		; inicjalizowane przy starcie
 hero_x::	db	00h		; na pdst map.dat	
 hero_d::	db	00h	
-hero_o::	db	00h		; offset wzgl .MAP
+hero_o::	ds	2		; 16-bit offset wzgl .MAP
 hero_i		db	'^','>','v','<'	; ikony Hero
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
-move_offsets	db	0,1,0,-1
+neighbor_offs:	db	0,1,0,-1
 ;--------------------------------
 ;--- VT-100 Terminal  ESC seq ---
 ;--------------------------------

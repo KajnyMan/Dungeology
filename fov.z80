@@ -72,12 +72,15 @@ field_of_view::
 
 	; ASCII char
 		ld	hl,(offset_pointer)
+		ld	d,0
 		ld	e,(hl)		
-		ld	a,(hero_o##)		
-		add	a,e			; dodanie przesuniecia Hero
+		bit	7,e
+		jr	z,addit
+		ld	d,0FFh
+	addit:	ld	hl,(hero_o##)		
+		add	hl,de			; dodanie przesuniecia Hero
+		ex	de,hl			; save sumy przesuniec
 		ld	hl,MAP##
-		ld	e,a			; dodanie tej sumy przesuniec
-		ld	d,00h			; Tile i Hero do adresu MAPy
 		add	hl,de			; i odczytanie z MAPy char 
 		ld	a,(hl)			; Tile i zapisanie tego
 		ld	(ix+2),a		; char (Tile) na liscie fov
