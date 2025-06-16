@@ -16,13 +16,12 @@ field_of_view::
 		ld	hl,fov_coords
 		ld	a,(hero_d##)
 		sla	a
-		ld	b,a			; d x 2 zapisany do dodania
+		sla	a
+		ld	b,a			; crlf ( d x 4 )
 		sla	a
 		sla	a
-		sla	a			; 16 x d
-		add	a,b			; 18 x d  ( dla offsets )
-		push	af			; save dla offsets
-		sla	a			; 36 x d ( dla coords )	
+		sla	a			; 32 x d
+		add	a,b			; 36 x d
 		ld	d,0
 		ld	e,a
 		add	hl,de			; wskaznik coords
@@ -30,9 +29,6 @@ field_of_view::
 
 	; Ustawienie wkaznika dla offsetow tiles	
 		ld	hl,fov_offsets
-		pop	af		; restore
-		ld	d,0
-		ld	e,a
 		add	hl,de			; wskaznik na offset tile 
 		ld	(offset_pointer),hl	; wzgledem Hero
 
@@ -72,12 +68,10 @@ field_of_view::
 
 	; ASCII char
 		ld	hl,(offset_pointer)
-		ld	d,0
 		ld	e,(hl)		
-		bit	7,e
-		jr	z,addit
-		ld	d,0FFh
-	addit:	ld	hl,(hero_o##)		
+		inc	hl
+		ld	d,(hl)
+		ld	hl,(hero_o##)		
 		add	hl,de			; dodanie przesuniecia Hero
 		ex	de,hl			; save sumy przesuniec
 		ld	hl,MAP##
@@ -92,6 +86,7 @@ field_of_view::
 	out2:	inc	hl
 		ld	(coords_pointer),hl
 		ld	hl,(offset_pointer)
+		inc	hl
 		inc	hl
 		ld	(offset_pointer),hl
 		inc	ix
@@ -234,63 +229,106 @@ prev_fov::
 ; -------------------------------------------------------
 calc_fov::
 		; --- EAST & NORTH --- 
-		ld	iy,fov_n + 2	
-		ld	ix,fov_e + 2
+		ld	iy,fov_n + 4	
+		ld	ix,fov_e + 4
 		ld	b,4			; glebokosc fov
 		ld	d,0
-		ld	e,5			; offset adresu od 5 do 2
+		ld	e,10			; offset adresu od 5 do 2
 		ld	a,(map_width##)
 		ld	c,a
-	nxtrow:	add	a,b
-		ld	(ix+1),a	
+	nxtrow:	push	bc
+		add	a,b
+		ld	(ix+2),a	
+		ld	(ix+3),0	
 		ld	a,b
 		sub	a,c
-		ld	(ix-1),a
+		ld	(ix-2),a
+		ld	(ix-1),0FFh
 		ld	(ix),b
-		call	mulproduct8##
-		neg
-		ld	(iy),a
-		ld	d,a
-		dec	d
-		inc	a
-		ld	(iy-1),d	
-		ld	(iy+1),a
-		ld	d,0
+		ld	(ix+1),0
+
+		call	mul8##
+		ld	a,h
+		cpl
+		ld	h,a
+		ld	a,l
+		cpl
+		ld	l,a
+		ld	(iy-2),l
+		ld	(iy-1),h
+		inc	hl
+
+		ld	(iy),l
+		ld	(iy+1),h
+		inc	hl
+		ld	(iy+2),l
+		ld	(iy+3),h
+
 		ld	a,b
 		cp	a,3
 		jr	c,ommit1
-		ld	a,(ix+1)
-		add	a,c
-		ld	(ix+2),a
-		ld	a,(ix-1)
-		sub	a,c
-		ld	(ix-2),a
-		ld	a,(iy-1)
-		dec	a
-		ld	(iy-2),a
-		ld	a,(iy+1)
-		inc	a
-		ld	(iy+2),a
+		ld	l,(ix+2)
+		ld	h,(ix+3)
+		ld	b,0
+		add	hl,bc
+		ld	(ix+4),l
+		ld	(ix+5),h
+		ld	l,(ix-2)
+		ld	h,(ix-1)
+		ld	b,0FFh
+		or	a
+		sbc	hl,bc
+		ld	(ix-4),l
+		ld	(ix-3),h
+
+		ld	l,(iy-2)
+		ld	h,(iy-1)
+		dec	hl	
+		ld	(iy-4),l
+		ld	(iy-3),h
+		ld	l,(iy+2)
+		ld	h,(iy+3)
+		inc	hl	
+		ld	(iy+4),l
+		ld	(iy+5),h
 	ommit1:
 		add	ix,de
 		add	iy,de
 		dec	e	
+		dec	e	
 		ld	a,c
+		pop	bc
 		djnz	nxtrow
-		ld	(ix+1),a
+		ld	(ix+2),a
+		ld	(ix+3),0
 		neg
 		ld	(ix),a
+		ld	(ix+1),0FFh
 		ld	(iy),-1
-		ld	(iy+1),1
+		ld	(iy+1),0FFh
+		ld	(iy+2),1
+		ld	(iy+3),0
 		;--- WEST & SOUTH ---
 		ld	hl,fov_n
 		ld	de,fov_s
 		ld	b,36
-	nxt1:	ld	a,(hl)	
-		neg
+	nxt1:	push	bc
+		ld	a,(hl)	
+		cpl
+		ld	c,a	
+		inc	hl
+		ld	a,(hl)
+		cpl
+		ld	b,a
+		inc	bc
+		ld	a,c
+		ld	(de),a
+		inc	de
+		ld	a,b
 		ld	(de),a
 		inc	hl
 		inc	de
+		pop	bc
 		djnz	nxt1
 		ret
 DSEG	
@@ -337,10 +375,10 @@ iterator	dw	0000h			; iterator list
 ; Offset'y tiles wzgledem Hero - wypelniane przez funkcje calc_fov
 ; -----------------------------------------------------------------
 fov_offsets::
-	fov_n:	ds	18 			; North
-	fov_e:	ds	18			; East	
-	fov_s:	ds	18			; South
-	fov_w:	ds	18			; West	
+	fov_n:	ds	36 			; North
+	fov_e:	ds	36			; East	
+	fov_s:	ds	36			; South
+	fov_w:	ds	36			; West	
 ; -----------------------------------------------------
 ; Przesuniecia koordynatow tiles wzgledem Hero - stale
 ; -----------------------------------------------------

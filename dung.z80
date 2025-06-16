@@ -105,6 +105,7 @@ readed:
 		ld	(map_height),a
 			
 ; Odczytuje z mapy pozycje i orientacje Hero i zapisuje tam gdzie trzeba
+		; ( HL ustawione ! )
 		ld	b,2
 		ld	de,hero_y
 	nxtcrd:	inc	hl			; 
@@ -127,12 +128,26 @@ readed:
 		and	0Fh			; przy starcie
 		ld	(de),a			;
 		
-
+; Oblicza pozycje okien 
+		; 2D X
+		ld	a,80
+		ld	hl,map_width
+		sub	a,(hl)
+		srl	a
+		dec	a
+		ld	(map_position + 1),a
+		; 3D Y	
+		ld	a,(map_height)
+		ld	hl,map_position
+		add	a,(hl)
+		add	a,3
+		ld	(w3d_position),a
 ; Oblicza offset hero wzgledem poczatku MAP'y
 		ld	a,(hero_y)
 		dec	a
 		ld	c,a
 		ld	a,(map_width)
+		ld	b,a
 		call	mul8##
 		ld	a,(hero_x)
 		dec	a
@@ -403,8 +418,8 @@ fcb		db	0
 map_height::	db	0
 map_width::	db	0	
 ;---- windows ---------
-map_position::	db	 1,30		; wzgl lew-gorn rogu terminala	
-w3d_position::	db	12,27
+map_position::	db	 1,0		; wzgl lew-gorn rogu terminala	
+w3d_position::	db	0,27
 ; -------------------------------------
 ; granice tiles MAP'y <- liczone przy starcie 
 ; -------------------------------------
