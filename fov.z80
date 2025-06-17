@@ -236,7 +236,7 @@ calc_fov::
 		ld	e,10			; offset adresu od 5 do 2
 		ld	a,(map_width##)
 		ld	c,a
-	nxtrow:	push	bc
+	nxtrow:
 		add	a,b
 		ld	(ix+2),a	
 		ld	(ix+3),0	
@@ -267,19 +267,14 @@ calc_fov::
 		ld	a,b
 		cp	a,3
 		jr	c,ommit1
-		ld	l,(ix+2)
-		ld	h,(ix+3)
-		ld	b,0
-		add	hl,bc
-		ld	(ix+4),l
-		ld	(ix+5),h
-		ld	l,(ix-2)
-		ld	h,(ix-1)
-		ld	b,0FFh
-		or	a
-		sbc	hl,bc
-		ld	(ix-4),l
-		ld	(ix-3),h
+		ld	a,(ix+2)
+		add	a,c
+		ld	(ix+4),a
+		ld	(ix+5),0
+		ld	a,(ix-2)
+		sub	a,c
+		ld	(ix-4),a
+		ld	(ix-3),0FFh
 
 		ld	l,(iy-2)
 		ld	h,(iy-1)
@@ -297,8 +292,8 @@ calc_fov::
 		dec	e	
 		dec	e	
 		ld	a,c
-		pop	bc
 		djnz	nxtrow
+
 		ld	(ix+2),a
 		ld	(ix+3),0
 		neg

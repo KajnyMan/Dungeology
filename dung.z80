@@ -111,10 +111,12 @@ readed:
 	nxtcrd:	inc	hl			; 
 		ld	a,(hl)			; pierwszy obrot Y	
 		and	0Fh			; drugi X
-		or	a			;
-		jr	z,omt1
-		ld	a,0Ah
-	omt1:	ld	c,a
+		sla	a
+		ld	c,a
+		sla	a
+		sla	a
+		add	a,c
+		ld	c,a
 		inc	hl
 		ld	a,(hl)
 		and	0Fh
