@@ -79,31 +79,37 @@ nxtrec:		push	de
 		jr	nxtrec
 readed:
 
-; Na podstawie wczytanej mapy okresla jej rozmiary
+; Czyta mape i inicjalizuje zmienne 
+		ld	ix,doors
 		ld	hl,MAP
 		ld	bc,0
-		; width 
-	rpt1:	ld	a,(hl)
-		cp	a,0Dh
-		jr	z,out1
-		inc	c			; COL++
-		inc	hl
-		jr	rpt1
-	out1:	inc	b			; ROW++	
+		; map width 
+		ld	a,0Dh
+		cpir
 		ld	a,c
-		add	a,2			; crlf
-		ld	(map_width),a
-	rpt2:	inc	hl
-		ld	a,(hl)
+		neg	
+		inc	a			; width++
+		ld	(map_width),a	
+		ld	hl,MAP
+		ld	bc,0
+		ld	de,0
+	rpt1:	ld	a,(hl)
 		cp	a,'$'
-		jr	z,out2
+		jr	z,calc1
 		cp	a,0Dh
-		jr	nz,rpt2
-		inc	b			;ROW++
-		jr	rpt2
-	out2:	ld	a,b
+		jr	nz,ommit1
+		inc	e			; height++
+		jr	ommit2
+	ommit1: cp	a,'+'
+		jp	z,init_door_cls
+		cp	a,'/'
+		jp	z,init_door_opn
+	ommit2:	inc	hl
+		inc	bc
+		jr	rpt1
+	calc1:	ld	a,e
 		ld	(map_height),a
-			
+
 ; Odczytuje z mapy pozycje i orientacje Hero i zapisuje tam gdzie trzeba
 		; ( HL ustawione ! )
 		ld	b,2
@@ -372,7 +378,7 @@ crsmov::
 ; na pare cyfr ASCII w C i B 
 ; np.0Fh -> C=1, B=5
 ;-----------------------------
-h2asci:
+h2asci::
 		ld	c,0
 loop:		ld	b,a
 		cp	a,10
@@ -410,6 +416,20 @@ right_before:
 		ld	a,(hl)		; a w A jego ikona (ascii)
 		ret
 
+;-------------------------------------------------
+; inicjalizuje tabele z drzwiami
+; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
+;-------------------------------------------------
+init_door_cls:	ld	(ix+2),1	
+		jr	ommit3
+init_door_opn:	ld	(ix+2),0
+	ommit3:	ld	(ix),c
+		ld	(ix+1),b
+		inc	ix
+		inc	ix
+		inc	ix
+		jp	ommit2
+
 ;===========================================================================================
 DSEG
 
@@ -434,6 +454,9 @@ hero_o::	ds	2		; 16-bit offset wzgl .MAP
 hero_i		db	'^','>','v','<'	; ikony Hero
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
+;------ doors ---------
+doors::		ds	96		; max 32 doors: ofs lsb, msb, flag (op / cl)
+
 ;--------------------------------
 ;--- VT-100 Terminal  ESC seq ---
 ;--------------------------------

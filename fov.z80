@@ -39,7 +39,7 @@ field_of_view::
 		ld	iy,borders##
 
 	; Dodanie offsetow koordynatow Tiles do koordynatow Hero	
-		ld	b,12h			; 18 przebiegow petli
+		ld	b,18			; 18 przebiegow petli
 .setdataloop:	push	bc			; SAVE licznik
 		ld	(ix),00h
 		ld	(ix+1),00h
@@ -79,9 +79,16 @@ field_of_view::
 		ld	a,(hl)			; Tile i zapisanie tego
 		ld	(ix+2),a		; char (Tile) na liscie fov
 
+		cp	a,C_DOOR		; Jesli Zamkniete drzwi
+		jr	nz,shift
+		ld	a,b
+		cp	a,4			; przed Hero
+		jr	nz,shift
+		call	roomlabel##		; to drukuj nr drzwi w 3D 
+
 	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
 	; i wskaznika listy FOV
-		ld	hl,(coords_pointer)
+	shift:	ld	hl,(coords_pointer)
 	out1:	inc	hl
 	out2:	inc	hl
 		ld	(coords_pointer),hl
@@ -151,13 +158,14 @@ field_of_view::
 		; Print 3D
 		pop	af			; Restore Tile.char
 		cp	a,WALL_CHAR
-		call	z,printwall_3d##	; Sprite na ekran
+		jp	z,printwall_3d##	; Sprite na ekran
 		cp	a,C_DOOR
-		call	z,print_c_door_3d##	; Sprite na ekran
+		jp	z,print_c_door_3d##	; Sprite na ekran
 		cp	a,O_DOOR
-		call	z,print_o_door_3d##	; Sprite na ekran
+		jp	z,print_o_door_3d##	; Sprite na ekran
 
-	out3:	pop	bc
+	printout::
+		pop	bc
 		djnz	.printloop			
 		ld	hl,(iterator)
 		ld	(hl),DELIM
@@ -188,9 +196,9 @@ is_visible:
 		add	iy,de
 		ld	a,(iy+2)		; Tile.char do sprawdzenia!
 		cp	a,WALL_CHAR
-		jp	z,out3
+		jp	z,printout
 		cp	a,'+'
-		jp	z,out3
+		jp	z,printout
 		inc	hl
 		djnz	three	
 		jp	vsbl	
@@ -239,13 +247,13 @@ calc_fov::
 	nxtrow:
 		add	a,b
 		ld	(ix+2),a	
-		ld	(ix+3),0	
+;		ld	(ix+3),0	
 		ld	a,b
 		sub	a,c
 		ld	(ix-2),a
 		ld	(ix-1),0FFh
 		ld	(ix),b
-		ld	(ix+1),0
+;		ld	(ix+1),0
 
 		call	mul8##
 		ld	a,h
@@ -270,7 +278,7 @@ calc_fov::
 		ld	a,(ix+2)
 		add	a,c
 		ld	(ix+4),a
-		ld	(ix+5),0
+;		ld	(ix+5),0
 		ld	a,(ix-2)
 		sub	a,c
 		ld	(ix-4),a
@@ -295,14 +303,14 @@ calc_fov::
 		djnz	nxtrow
 
 		ld	(ix+2),a
-		ld	(ix+3),0
+;		ld	(ix+3),0
 		neg
 		ld	(ix),a
 		ld	(ix+1),0FFh
 		ld	(iy),-1
 		ld	(iy+1),0FFh
 		ld	(iy+2),1
-		ld	(iy+3),0
+;		ld	(iy+3),0
 		;--- WEST & SOUTH ---
 		ld	hl,fov_n
 		ld	de,fov_s
