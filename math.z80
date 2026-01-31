@@ -1,0 +1,57 @@
+; --------------------------------
+; Mnozenie dwoch liczb 8-bitowych
+; czynniki: B,C. Iloczyn: HL
+; --------------------------------
+mul8::		push	de
+		push	bc
+		ld	hl,0
+		ld	a,8
+		ld	d,0
+		ld	e,b
+	nxtbit:	bit	0,c
+		jr	z,noadd
+		add	hl,de
+	noadd:	srl	c
+		sla	e
+		rl	d
+		dec	a
+		jr	nz,nxtbit
+		pop	bc
+		pop	de
+		ret
+		
+; -----------------------------------
+; Mnozenie takich liczb aby iloczyn 
+; byl 8-bitowy. 
+; czynniki: B,C   iloczyn: A
+; -----------------------------------
+mulproduct8::
+		push	bc
+		ld	a,0
+	nxtadd:	add a,c
+		djnz nxtadd
+		pop	bc
+		ret
+
+; --------------------------------------
+; Zamiana 2-cyfrowej liczby dziesietnej 
+; w formacie ASCII na liczbe 8-bit
+; input: (HL)	output: A
+; --------------------------------------
+ascii2num::
+		ld	a,(hl)			; pierwszy obrot Y	
+		and	0Fh			; minus ascii bits
+		sla	a
+		ld	c,a
+		sla	a
+		sla	a
+		add	a,c			; x 10
+		ld	c,a			; save dziesiatki
+		inc	hl
+		ld	a,(hl)
+		and	0Fh
+		add	a,c			; dziesietne + jednoscioci
+		inc	hl
+		ret
+
+
