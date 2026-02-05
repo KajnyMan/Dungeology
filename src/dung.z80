@@ -4,14 +4,14 @@
 
 BDOS	equ	0005h
 PRTCHR	equ	02h
-conio	equ	06h
+CONIO	equ	06h
 PRTSTR	equ	09h
-fopen	equ	0Fh
-setdma	equ	1Ah
-rdseq	equ	14h
-reclen	equ	80h
-fclose	equ	10h
-reclen	equ	80h
+FOPEN	equ	0Fh
+SETDMA	equ	1Ah
+RDSEQ	equ	14h
+RECLEN	equ	80h
+FCLOSE	equ	10h
+RECLEN	equ	80h
 NORTH	equ	00h
 EAST	equ	01h
 SOUTH	equ	02h
@@ -22,6 +22,7 @@ C_DOOR	equ	'+'
 O_DOOR	equ	'/'
 
 ;============== M A C R O ====  D E F S ===============
+
 clear_screen	MACRO
 		ld	c,PRTSTR
 		ld	de,cls_home
@@ -48,14 +49,15 @@ print_string	MACRO	XX
 		jr	jump
 string		db	XX,0Dh,0Ah,'$'
 jump:		ENDM
-;======================================================
+
+;============== D A T A     I N I T ===================
 
 CSEG
-	clear_screen
+		clear_screen
 	
 ; Otwiera plik	
 		ld	de,fcb
-		ld	c,fopen
+		ld	c,FOPEN
 		call	BDOS
 		cp	0FFh
 		jp	z,exit
@@ -63,71 +65,89 @@ CSEG
 ; Ustawia bufor dla pliku
 		ld	de,MAP##
 nxtrec:		push	de
-		ld	c,setdma
+		ld	c,SETDMA
 		call	BDOS
 	
 ; Czyta record z pliku do bufora	
 		ld	de,fcb
-		ld	c,rdseq	
+		ld	c,RDSEQ	
 		call	BDOS
 		pop	de
 		or	a
 		jp	nz,readed
-		ld	hl,reclen
+		ld	hl,RECLEN
 		add	hl,de
 		ex	de,hl
 		jr	nxtrec
 readed:
 
-; Czyta mape i inicjalizuje zmienne 
+; Czyta mape i inicjalizuje jej wymiary. Przy okazji na jej podstawie
+; inicjalizuje obiekty ( poki co drzwi ). 
 		ld	ix,doors
 		ld	hl,MAP
-		ld	bc,0
-		; map width 
+		ld	bc,0			; licznik w tyl
+		; szerokosc mapy
 		ld	a,0Dh
 		cpir
 		ld	a,c
 		neg	
 		inc	a			; width++
 		ld	(map_width),a	
+		; wysokosc mapy i obiekty
 		ld	hl,MAP
-		ld	bc,0
-		ld	de,0
-	rpt1:	ld	a,(hl)
-		cp	a,'$'
-		jr	z,calc1
-		cp	a,0Dh
-		jr	nz,ommit1
+		ld	bc,0			; offset obiektow
+		ld	de,0			; licznik wysokosci
+next_mapchar:
+		ld	a,(hl)
+		cp	a,'$'			; '$' - koniec mapy
+		jr	z,calc_height
+		cp	a,0Dh			; 0Dh - koniec wiersza mapy
+		jr	nz,objects
 		inc	e			; height++
-		jr	ommit2
-	ommit1: cp	a,'+'
-		jp	z,init_door_cls
-		cp	a,'/'
-		jp	z,init_door_opn
-	ommit2:	inc	hl
+		jr	inc_counters
+objects:
+		cp	a,C_DOOR
+		jr	z,init_door_cls
+		cp	a,O_DOOR
+		jr	z,init_door_opn
+inc_counters:
+		inc	hl
 		inc	bc
-		jr	rpt1
-	calc1:	ld	a,e
+		jr	next_mapchar
+calc_height:
+		ld	a,e
 		ld	(map_height),a
 		inc	hl			 
+		jr	init_hero
+		; inicjalizuje tabele objektow
+		; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
+init_door_cls:	ld	(ix+2),1	
+		jr	init_offset
+init_door_opn:	ld	(ix+2),0
+init_offset:	ld	(ix),c			; offset obiektu lsb
+		ld	(ix+1),b		; msb
+		inc	ix			
+		inc	ix
+		inc	ix
+		jp	inc_counters
 
-; Odczytuje z mapy pozycje i orientacje Hero i zapisuje tam gdzie trzeba
-		; ( HL ustawione ! )
-		call	ascii2num##
+; Pozycja i zwrot Hero z mapy ( HL ustawione )
+init_hero:	call	ascii2num##
 		ld	(hero_y),a
 		inc	hl			; ominiecie separatora
 		call	ascii2num##
 		ld	(hero_x),a
+		inc	hl			; ominiecie separatora
 		ld	a,(hl)			; Orientacja Hero
-		and	0Fh			; przy starcie
-		ld	(de),a			;
+		and	0Fh		
+		ld	(hero_d),a
 		
 ; Oblicza pozycje okien 
 		; 2D X
 		ld	a,80
 		ld	hl,map_width
 		sub	a,(hl)
-		srl	a
+		srl	a	
 		dec	a
 		ld	(map_position + 1),a
 		; 3D Y	
@@ -136,6 +156,7 @@ readed:
 		add	a,(hl)
 		add	a,3
 		ld	(w3d_position),a
+
 ; Oblicza offset hero wzgledem poczatku MAP'y
 		ld	a,(hero_y)
 		dec	a
@@ -173,7 +194,6 @@ readed:
 		ld	(ix+3),a
 
 ; Oblicza i wypelnia tabele neighbor_offs
-
 		ld	ix,neighbor_offs
 		ld	a,(map_width)
 		ld	(ix+2),a
@@ -183,46 +203,22 @@ readed:
 ; Oblicza i wypelnia tabele fov_offsets
 		call	calc_fov##	
 
-	hide_cursor
+; ===============  M A I N    L O O P =================
+ 
+		hide_cursor
+		jp	begin
 
-		jr	begin
-
-; Sprawdza czy ruch jest mozliwy
-ismove:		call	right_before
-		cp	a,WALL
-		jp	z,loop1
-		cp	a,C_DOOR
-		jp	z,loop1
-		call	move
-		jp	refresh
-
-;------------------------------------------
-; Funkcja otwierajaca lub zamykajaca drzwi
-;------------------------------------------
-door:		call	right_before
-		cp	a,C_DOOR
-		jr	z,open_door
-		cp	a,O_DOOR
-		jr	z,close_door
-		jp	loop1
-open_door:	ld	(hl),O_DOOR	
-		jr	refresh
-close_door:	ld	(hl),C_DOOR
-		jr	refresh
-
-;------------------------------------------
-refresh:
+refresh:	hide_cursor
 		; -------------------------------------------
 		; Powidok po fov poprzedniego ruchu na ekran
 		; -------------------------------------------
-		hide_cursor
 		call	prev_fov##
 		call	cls_3d##
 
 		; -----------------------
 		; Pole widzenia na ekran
 		; -----------------------
-	begin:	call	field_of_view##
+begin:		call	field_of_view##
 
 		; --------------	
 		; Hero na ekran	
@@ -246,11 +242,11 @@ refresh:
 ;--------------------------
 ; Petla odczytu klawiatury
 ;--------------------------
-loop1:		ld	c,conio
+key_read:	ld	c,CONIO
 		ld	e,0FFh	; kbd read
 		call	BDOS
 		cp	a,01h
-		jr	c,loop1
+		jr	c,key_read
 		cp	a,'f'
 		jr	z,trn_r
 		cp	a,'s'
@@ -266,10 +262,10 @@ loop1:		ld	c,conio
 		cp	a,'l'
 		jr	z,right
 		cp	a,'d'
-		jp	z,door
+		jp	z,move_door
 		cp	a,'Q'	; exit
-		jr	z,halt
-		jr	loop1
+		jp	z,halt
+		jr	key_read
 
 trn_r:
 		ld	hl,hero_d
@@ -304,19 +300,26 @@ right:
 		ld	(hero_d),a	
 		jp	ismove
 	
-;------------------------	
-; Wyjscie do CP/M
-;------------------------
-halt:
-		clear_screen
-		print_string	'Thank You for playing Dungeology.'		
-	
-; Zamyka plik
-close:		ld	de,fcb
-		ld	c,fclose
-		call	BDOS
-	
-exit:		ret
+; otwiera lub zamyka drzwi
+move_door:	call	right_before
+		cp	a,C_DOOR
+		jr	z,open_door
+		cp	a,O_DOOR
+		jr	z,close_door
+		jp	key_read	; nie ma tutaj drzwi! Wypad
+open_door:	ld	(hl),O_DOOR	
+		jp	refresh
+close_door:	ld	(hl),C_DOOR
+		jp	refresh
+
+; Sprawdza czy ruch jest mozliwy
+ismove:		call	right_before
+		cp	a,WALL
+		jp	z,key_read
+		cp	a,C_DOOR
+		jp	z,key_read
+		call	move
+		jp	refresh
 
 ;-------------------------------------------------
 ; Zmienia pozycje Hero
@@ -402,19 +405,19 @@ right_before:
 		ld	a,(hl)		; a w A jego ikona (ascii)
 		ret
 
-;-------------------------------------------------
-; inicjalizuje tabele z drzwiami
-; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
-;-------------------------------------------------
-init_door_cls:	ld	(ix+2),1	
-		jr	ommit3
-init_door_opn:	ld	(ix+2),0
-	ommit3:	ld	(ix),c
-		ld	(ix+1),b
-		inc	ix
-		inc	ix
-		inc	ix
-		jp	ommit2
+;------------------------	
+; Wyjscie do CP/M
+;------------------------
+halt:
+		clear_screen
+		print_string	'Thank You for playing Dungeology.'		
+	
+; Zamyka plik
+close:		ld	de,fcb
+		ld	c,FCLOSE
+		call	BDOS
+	
+exit:		ret
 
 ;===========================================================================================
 DSEG

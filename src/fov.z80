@@ -11,28 +11,46 @@ CSEG
 ;=============
 field_of_view::
 ;=============
-	; test 
-	; Ustawienie wskaznika dla offsetow koordynatow tiles
+	; fov_coords - offsety tiles na ekranie ( zawsze stale )
+	; fov_offsets - offsety tiles na mapie ( zaleza od szerokosci mapy )
+	; Ustawienie wskaznika fov_coords w zaleznosci kierunku patrzenia. 
+	; 109 t
 		ld	hl,fov_coords
 		ld	a,(hero_d##)
-		sla	a
-		sla	a
-		ld	b,a			; crlf ( d x 4 )
-		sla	a
-		sla	a
-		sla	a			; 32 x d
+		add	a
+		add	a			; 
+		ld	b,a			;  4 x d 
+		add	a			; 
+		add	a			; 
+		add	a			; 32 x d 
 		add	a,b			; 36 x d
 		ld	d,0
 		ld	e,a
 		add	hl,de			; wskaznik coords
 		ld	(coords_pointer),hl	; zapisany
+	; opt1: 91 t, +4B
+	; wariant z 4 bajtowa tabelka ( staly krok o 36B )
+;		ld	hl,fov_diroffset
+;		ld	a,(hero_d##)
+;		ld	d,0
+;		ld	e,a
+;		add	hl,de
+;		ex	de,hl
+;		ld	hl,fov_coorsds
+;		add	hl,de
+;		ld	(coords_pointer),hl	; zapisany
+		
 
 	; Ustawienie wkaznika dla offsetow tiles	
+	; koordynaty oraz offsety sa 2 bajtowe, wiec offset w DE jest ten sam
 		ld	hl,fov_offsets
 		add	hl,de			; wskaznik na offset tile 
 		ld	(offset_pointer),hl	; wzgledem Hero
 
 	; Ustawienie wskaznika dla fov_list
+	; Wszystkie obiekty w polu widzenia beda dodany do tej listy
+	; Te poza MAP beda wyzerowane
+	; 3 Bajty dla obiektu: y, x ( dla Terminala ), ASCII char obiektu 
 		ld	ix,fov_list
 
 	; Ustawienie wskaznika dla map_position

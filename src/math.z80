@@ -41,10 +41,10 @@ mulproduct8::
 ascii2num::
 		ld	a,(hl)			; pierwszy obrot Y	
 		and	0Fh			; minus ascii bits
-		sla	a
+		add	a			; x 2	
 		ld	c,a
-		sla	a
-		sla	a
+		add	a
+		add	a
 		add	a,c			; x 10
 		ld	c,a			; save dziesiatki
 		inc	hl
