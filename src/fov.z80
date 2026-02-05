@@ -36,7 +36,7 @@ field_of_view::
 ;		ld	e,a
 ;		add	hl,de
 ;		ex	de,hl
-;		ld	hl,fov_coorsds
+;		ld	hl,fov_coords
 ;		add	hl,de
 ;		ld	(coords_pointer),hl	; zapisany
 		
