@@ -15,30 +15,30 @@ field_of_view::
 	; fov_offsets - offsety tiles na mapie ( zaleza od szerokosci mapy )
 	; Ustawienie wskaznika fov_coords w zaleznosci kierunku patrzenia. 
 	; 109 t
-		ld	hl,fov_coords
-		ld	a,(hero_d##)
-		add	a
-		add	a			; 
-		ld	b,a			;  4 x d 
-		add	a			; 
-		add	a			; 
-		add	a			; 32 x d 
-		add	a,b			; 36 x d
-		ld	d,0
-		ld	e,a
-		add	hl,de			; wskaznik coords
-		ld	(coords_pointer),hl	; zapisany
-	; opt1: 91 t, +4B
-	; wariant z 4 bajtowa tabelka ( staly krok o 36B )
-;		ld	hl,fov_diroffset
+;		ld	hl,fov_coords
 ;		ld	a,(hero_d##)
+;		add	a
+;		add	a			; 
+;		ld	b,a			;  4 x d 
+;		add	a			; 
+;		add	a			; 
+;		add	a			; 32 x d 
+;		add	a,b			; 36 x d
 ;		ld	d,0
 ;		ld	e,a
-;		add	hl,de
-;		ex	de,hl
-;		ld	hl,fov_coords
-;		add	hl,de
+;		add	hl,de			; wskaznik coords
 ;		ld	(coords_pointer),hl	; zapisany
+	; opt1: 89 t, +4B
+	; wariant z 4 bajtowa tabelka ( staly krok o 36B )
+		ld	hl,fov_diroffset
+		ld	a,(hero_d##)
+		ld	d,0
+		ld	e,a
+		add	hl,de
+		ld	e,(hl)			; przesuniecie do dodania
+		ld	hl,fov_coords
+		add	hl,de
+		ld	(coords_pointer),hl	; zapisany
 		
 
 	; Ustawienie wkaznika dla offsetow tiles	
@@ -428,9 +428,10 @@ fov_coords
 		db	        1,-2,  0,-2,  -1,-2
 		db	        1,-1,  0,-1,  -1,-1
 		db	        1,0,        -1,0
-
+; Tabela przesuniec w tabeli fov_coord. Przesuniecie zalezy od zwrotu Hero
+fov_diroffset	db	0, 36, 72, 108
 ; Pola wskaznikow
-coords_pointer:	dw	0000h
-offset_pointer:	dw	0000h
+coords_pointer	dw	0000h
+offset_pointer	dw	0000h
 counter		db	00h
 
