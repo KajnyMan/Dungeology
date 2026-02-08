@@ -97,12 +97,15 @@ field_of_view::
 		ld	a,(hl)			; Tile i zapisanie tego
 		ld	(ix+2),a		; char (Tile) na liscie fov
 
+	; Jezeli przed Hero sa Zamkniete Drzwi to funkja roomlabel wyszukuje je
+	; na mapie i wbije odpowiedni nr drzwi w sprit'a 3D, ktory bedzie
+	; pozniej wydrukowany.
 		cp	a,C_DOOR		; Jesli Zamkniete drzwi
 		jr	nz,shift
 		ld	a,b
 		cp	a,4			; przed Hero
 		jr	nz,shift
-		call	roomlabel##		; to drukuj nr drzwi w 3D 
+		call	roomlabel##		; to wbij nr drzwi w sprite'a 3D
 
 	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
 	; i wskaznika listy FOV
@@ -125,7 +128,7 @@ field_of_view::
 	; - Petla wyswietlajaca FOV i zapisujaca do prev_fov -
 	; ----------------------------------------------------
 		ld	b,18			; ilosc mozliwych pol widzenia
-	; Ustawienie wskaznikow
+		; Ustawienie wskaznikow
 		ld	hl,prev_fov_list
 		ld	(iterator),hl
 .printloop:
@@ -145,7 +148,7 @@ field_of_view::
 		ld	hl,fov_list_end
 		ld	a,(main_counter)
 		ld	b,a
-		sla	a
+		add	a
 		add	a,b			; licznik x 3
 		ld	e,a
 		and	a			; carry  0	
@@ -196,7 +199,7 @@ is_visible:
 		ld	b,3			; 3 przebiegi petli
 		sub	a,6			; brak zaslon dla pierwszych 5  
 		ld	c,a			; save i
-		sla	a			; i x 2	
+		add	a			; i x 2	
 		add	a,c			; i x 3 (3 potencjalne zaslony)
 		ld	hl,list_indexes
 		ld	e,a
@@ -206,7 +209,7 @@ is_visible:
 		cp	a,0
 		jp	z,vsbl			; jak 0 - wypad
 		ld	c,a			; Save index
-		sla	a
+		add	a
 		add	a,c			; index x 3 ( y,x,char )
 		ld	iy,fov_list		; od tego liczymy offsety
 		ld	e,a

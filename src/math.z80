@@ -47,6 +47,26 @@ mul8::		push	bc
 ;		ret
 
 
+;-----------------------------
+; Funkja zamienia liczbe w A
+; na pare cyfr ASCII w C i B 
+; np.0Fh -> C=1, B=5
+;-----------------------------
+h2asci::
+		ld	c,0
+loop2:		ld	b,a
+		cp	a,10
+		jr	c,fine	;jesli a<10 koniec
+		inc	c
+		sub	a,10
+		jr	loop2
+fine:		add	a,'0'
+		ld	b,a
+		ld	a,c
+		add	a,'0'
+		ld	c,a
+		ret
+
 ; --------------------------------------
 ; Zamiana 2-cyfrowej liczby dziesietnej 
 ; w formacie ASCII na liczbe 8-bit

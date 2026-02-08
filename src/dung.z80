@@ -239,9 +239,6 @@ begin:		call	field_of_view##		; fov.z80
 		call	crsmov		; cofa kursor
 		show_cursor
 	
-;--------------------------
-; Petla odczytu klawiatury
-;--------------------------
 key_read:	ld	c,CONIO
 		ld	e,0FFh	; kbd read
 		call	BDOS
@@ -253,20 +250,11 @@ key_read:	ld	c,CONIO
 		jp	z,trn_l
 		cp	a,'e'
 		jp	z,ismove
-		cp	a,'h'
-		jr	z,left
-		cp	a,'j'
-		jr	z,down
-		cp	a,'k'
-		jr	z,up
-		cp	a,'l'
-		jr	z,right
 		cp	a,'d'
 		jp	z,move_door
 		cp	a,'Q'	; exit
 		jp	z,halt
 		jr	key_read
-
 trn_r:
 		ld	hl,hero_d
 		inc	(hl)
@@ -283,23 +271,7 @@ trn_l:
 		jp	nz,refresh
 		ld	(hl),WEST
 		jp	refresh
-left:
-		ld	a,WEST
-		ld	(hero_d),a	
-		jp	ismove
-down:	
-		ld	a,SOUTH
-		ld	(hero_d),a	
-		jp	ismove
-up:	
-		ld	a,NORTH
-		ld	(hero_d),a	
-		jp	ismove
-right:	
-		ld	a,EAST
-		ld	(hero_d),a	
-		jp	ismove
-	
+
 ; otwiera lub zamyka drzwi
 move_door:	call	right_before
 		cp	a,C_DOOR
@@ -334,7 +306,7 @@ move:
 
 		ld	hl,hero_s	; /
 		ld	a,(hero_d)	; Przesuniecie kursora
-		sla	a		; do nowej pozycji
+		add	a		; do nowej pozycji
 		ld	e,a		; Hero
 		ld	d,00h
 		add	hl,de 
@@ -345,41 +317,21 @@ move:
 		ld	a,(hero_x)
 		add	a,(hl)
 		ld	(hero_x),a	; \____________
-
 		ret
+
 ;--------------------------------------
 ; Funkcja przesuwa kursor do x=D i y=E
 ;--------------------------------------
 crsmov::
 		ld	a,e
-		call	h2asci
+		call	h2asci##
 		ld	(_y),bc
 		ld	a,d
-		call	h2asci
+		call	h2asci##
 		ld	(_x),bc
 		ld	c,PRTSTR
 		ld	de,crspos
 		call	BDOS
-		ret
-
-;-----------------------------
-; Funkja zamienia liczbe w A
-; na pare cyfr ASCII w C i B 
-; np.0Fh -> C=1, B=5
-;-----------------------------
-h2asci::
-		ld	c,0
-loop:		ld	b,a
-		cp	a,10
-		jr	c,fine	;jesli a<10 koniec
-		inc	c
-		sub	a,10
-		jr	loop
-fine:		add	a,'0'
-		ld	b,a
-		ld	a,c
-		add	a,'0'
-		ld	c,a
 		ret
 
 ;-----------------------------------------

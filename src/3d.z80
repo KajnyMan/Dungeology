@@ -12,7 +12,7 @@ print_o_door_3d::
 		ld	hl,o_door_sprites
 	common:	ld	a,(main_counter##)
 		dec	a
-		sla	a
+		add	a
 		ld	d,0
 		ld	e,a
 		add	hl,de			; adres wskaznika na Sprite
