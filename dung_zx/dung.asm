@@ -20,6 +20,8 @@ STRING_DELIM	equ	'$'
 FONTS		equ	3D00h	
 SCREEN		equ	4000h
 SCREEN_ATR	equ	5800h
+LOW_AREA	equ	5B00h
+MIDDLE_AREA	equ	5A00h
 
 CS_V		equ	0FEh
 A_G		equ	0FDh
@@ -30,6 +32,15 @@ P_Y		equ	0DFh
 Enter_H		equ	0BFh
 Space_B		equ	7Fh
 
+BLACK		equ	0
+BLUE		equ	1
+RED		equ	2
+PURPLE		equ	3
+GREEN		equ	4
+CYAN		equ	5
+YELLOW		equ	6
+WHITE		equ	7
+
 
 		include	macro.asm
 		
@@ -37,7 +48,10 @@ Space_B		equ	7Fh
 		
 		di	;  iy <-- ku**********a
 		clear_lines 191
-
+		border_color BLACK
+			
+		set_color BLACK, BLUE, LOW_AREA, 8
+		set_color BLACK, GREEN, MIDDLE_AREA, 16
 ;============== D A T A     I N I T ===================
 	
 ; ------ Czyta mape i inicjalizuje obiekty ( poki co drzwi ). ------
