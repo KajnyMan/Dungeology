@@ -180,17 +180,16 @@ init_hero:	call	ascii2num##
 ; Oblicza granice widzialnosci Tiles
 		ld	ix,borders
 		ld	a,(map_position)	
-		inc	a
 		ld	(ix),a
 		ld	hl,map_height
 		add	a,(hl)
+		dec	a
 		ld	(ix+1),a
 		ld	a,(map_position + 1)
-		inc	a
 		ld	(ix+2),a
 		inc	hl
 		add	a,(hl)
-		sub	a,2			; crlf 
+		dec	a
 		ld	(ix+3),a
 
 ; Oblicza i wypelnia tabele neighbor_offs
