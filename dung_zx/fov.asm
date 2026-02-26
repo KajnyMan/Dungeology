@@ -149,12 +149,10 @@ field_of_view:
 		inc	hl
 		ld	(iterator),hl
 		
-		call	gotoyx
-
 		; Tile na ekran	
 		ld	a,(ix+2)		
+		call	gotoyx
 		call	pchar
-
 
 		; Print 3D
 		pop	af			; Restore Tile.char
@@ -172,6 +170,7 @@ field_of_view:
 		ld	hl,(iterator)
 		ld	(hl),DELIM
 		ret
+
 ;-----------------------------------
 ; Sprawdza czy Tile jest widoczny
 ; ( w A jest licznil petli funkji wywolujacej )

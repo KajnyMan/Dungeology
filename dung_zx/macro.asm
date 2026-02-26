@@ -29,13 +29,9 @@ border_color	MACRO	_color
 		ENDM
 	
 ; =======================
-set_color	MACRO _paper, _ink, _adress, _rows
+set_color	MACRO _paper_ink, _adress, _rows
 		LOCAL	colour_block
-		ld	a,_paper
-		add	a,a
-		add	a,a
-		add	a,a
-		or	_ink
+		ld	a,_paper_ink
 		ld	d,a
 		ld	e,a
 		ld	hl,0000h
@@ -49,3 +45,13 @@ set_color	MACRO _paper, _ink, _adress, _rows
 		djnz	colour_block	
 		ld	sp,hl			; restore SP
 		ENDM
+
+; ======================
+set_hero_m	MACRO _paper_ink
+		IF NUL _paper_ink
+		ELSE
+		ld	a,_paper_ink
+		ENDIF
+		ld	(hero_m),a
+		ENDM
+

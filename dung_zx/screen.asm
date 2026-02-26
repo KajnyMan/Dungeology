@@ -1,15 +1,14 @@
-
-gotoyx:
-
 ; ==================================================================
 ; === Przyjmuje y,x ekranu, a zwraca adres w pamieci ekranu ======== 
 ; IN:
 ;	BC - Y,X
 ; OUT:
 ;	DE - adres pozycji na ekranie
+; USED:	A  
 ; ==================================================================
 
-
+gotoyx:
+		push	af
 		ld	de,SCREEN
 		ld	a,b
 		and	%00000111		; bity 0-2 Y-ka	
@@ -26,14 +25,15 @@ gotoyx:
 		ld	a,c
 		or	e			; przesuniecie X do adresu
 		ld	e,a
+		pop	af
 
 		ret
-
-
-; ==================================================================
+; ===================================================
+; =======       Drukuje znak na ekranie      ========
 ; IN: 	DE - adres gdzie ma pojawic sie znak
 ;	A - ASCII char do wyswietlenia 
-; ==================================================================	
+; USED:	A, BC, DE, HL
+; ===================================================
 pchar:
 	
 		ld	bc,FONTS
@@ -54,6 +54,34 @@ next_bitline:
 		jr	nz,next_bitline
 		ret
 
+
+; =====================================================
+; =======       Ustawia kolor w Y, X ekranu	=======
+; IN: 		BC - Y,X
+;		A - atrybut
+; OUT:		HL - adres w pamieci atrybutow 
+; USED:		BC, HL 
+; =====================================================
+
+setatr:
+		push	af		; kolor save
+
+		ld	hl,0
+		ld	a,b
+		add	a,a
+		add	a,a
+		add	a,a
+		ld	l,a	
+		add	hl,hl
+		add	hl,hl
+		ld	b,0
+		add	hl,bc
+		ld	bc,SCREEN_ATR	
+		add	hl,bc		; adres atrybutow
+
+		pop	af		; kolor restore
+		ld	(hl),a		; i ustawiony
+		ret	
 
 ; ==================================================================
 ; IN:	DE - adres gdzie ma pojawic sie string
@@ -102,4 +130,46 @@ pstring_out:
 ;		inc	bc
 ;		jr	pstring2
 ;pstring_out2:
+;		ret
+; ==================================================================
+; Przyjmuje y,x ekranu, a zwraca adres w pamieci atrybutow ekranu 
+; IN:
+;	BC - Y,X
+; OUT:
+;	HL' - adres w pamieci atrybutow 
+; USED: A', BC'
+; ==================================================================
+
+;atryx:
+;		push	bc
+;		exx
+;		ex	af,af'
+;		pop	bc
+;
+;		ld	hl,0
+;		ld	a,b
+;		add	a,a
+;		add	a,a
+;		add	a,a
+;		ld	l,a	
+;		add	hl,hl
+;		add	hl,hl
+;		ld	b,0
+;		add	hl,bc
+;		ld	bc,SCREEN_ATR	
+;		add	hl,bc
+;		ex	af,af'
+;		exx	
+;		ret
+
+; ==================================================================
+; IN: 	HL' - adres gdzie ma pojawic sie bajt atrybutow 
+;	A - bajt atrybutow do skopiowania 
+; USED:	A'
+; ==================================================================	
+;patr:		push	af
+;		exx	
+;		pop	af
+;		ld	(hl),a
+;		exx
 ;		ret

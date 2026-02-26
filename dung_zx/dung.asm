@@ -20,8 +20,8 @@ STRING_DELIM	equ	'$'
 FONTS		equ	3D00h	
 SCREEN		equ	4000h
 SCREEN_ATR	equ	5800h
-LOW_AREA	equ	5B00h
-MIDDLE_AREA	equ	5A00h
+ATR_MIDDLE_AREA	equ	5A00h
+ATR_LOW_AREA	equ	5B00h
 
 CS_V		equ	0FEh
 A_G		equ	0FDh
@@ -40,18 +40,31 @@ GREEN		equ	4
 CYAN		equ	5
 YELLOW		equ	6
 WHITE		equ	7
+BLACK_BGD	equ	0
+BLUE_BGD	equ	8
+RED_BGD		equ	16
+PURPLE_BGD	equ	24	
+GREEN_BGD	equ	32	
+CYAN_BGD	equ	40
+YELLOW_BGD	equ	48
+WHITE_BGD	equ	56
+BRIGHT		equ	64
+FLASH		equ	128
 
 
 		include	macro.asm
 		
 		org	8000h
 		
-		di	;  iy <-- ku**********a
+		di
 		clear_lines 191
 		border_color BLACK
 			
-		set_color BLACK, BLUE, LOW_AREA, 8
-		set_color BLACK, GREEN, MIDDLE_AREA, 16
+		set_color BLACK_BGD OR BLUE, ATR_LOW_AREA, 8
+		set_color BLACK_BGD OR RED, ATR_MIDDLE_AREA, 16
+		; domyslnie w pamieci Hero atrybut ustawiony w set_color
+		set_hero_m
+
 ;============== D A T A     I N I T ===================
 	
 ; ------ Czyta mape i inicjalizuje obiekty ( poki co drzwi ). ------
@@ -83,7 +96,9 @@ inc_counters:	inc	hl
 		ld	a,b
 		or	c
 		jr	nz,next_mapchar
-
+		; Hero kolor ---------
+		ld	a,YELLOW
+		ld	(hero_a),a
 ; Na podstawie Y,X oblicza offset hero wzgledem poczatku MAP'y
 		ld	a,(hero_y)
 		ld	c,a
@@ -151,23 +166,20 @@ begin:		call	field_of_view		; fov.z80
 		; --------------	
 		; Hero na ekran	
 		; --------------
-		ld	bc,(hero_yx)
-		call	gotoyx
-
 		ld	hl,hero_i	; ikona hero
 		ld	a,(hero_d)	; w zaleznosci
 		ld	b,0		; od kierunku
 		ld	c,a		; i zwrotu
 		add	hl,bc		; ^ > v <
 		ld	a,(hl)
+		ld	bc,(hero_yx)
+		push	bc
+		call	gotoyx
 		call	pchar
+		ld	a,(hero_a)
+		pop	bc		; RESTORE Y,X
+		call	setatr	
 
-
-;		call	delay
-;		ld	a,4
-;		jr	asdf	
-
-		
 wait_release:
 		call	scan_keyboard	
 		cp	0
@@ -229,15 +241,19 @@ ismove:		call	right_before
 
 ;-------------------------------------------------
 ; Zmienia pozycje Hero
-; w DE ma byc nowa pozycja ( offset wzgl. MAP )
+; IN: DE - nowa pozycja ( offset wzgl. MAP )
 ;-------------------------------------------------
 move:
 		ld	(hero_o),de	; Hero new offset
 		
 		ld	bc,(hero_x)
+		push	bc		; SAVE Y,X
 		call	gotoyx
 		ld	a,FLOOR_CHAR
 		call	pchar
+		pop	bc		; RESTORE Y,X
+		ld	a,(hero_m)
+		call	setatr
 
 		ld	hl,hero_s	; /
 		ld	a,(hero_d)	; Przesuniecie kursora
@@ -316,9 +332,11 @@ borders:	ds	4			; Ymin, Ymax, Xmin, Xmax
 hero_yx:
 hero_x:		db	2
 hero_y:		db	2	
-hero_d:		db	1	
+hero_d:		db	1			; zwrot : 0 - N, 1 - E itd
 hero_o:		ds	2			; 16-bit offset wzgl .MAP
 hero_i		db	'^','>','v','<'		; ikony Hero
+hero_a		db	0			; kolory ( atrybut )
+hero_m		db	0			; pamiec atrybutu
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
 ;------ doors ---------
