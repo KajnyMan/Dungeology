@@ -15,7 +15,9 @@ WALL_CHAR	equ	'#'
 FLOOR_CHAR	equ	' '
 C_DOOR		equ	'+'
 O_DOOR		equ	'/'
+PASSAGE_CHAR	equ	'='
 STRING_DELIM	equ	'$'
+OBJ_MAX		equ	32
 
 FONTS		equ	3D00h	
 SCREEN		equ	4000h
@@ -60,15 +62,16 @@ FLASH		equ	128
 		clear_lines 191
 		border_color BLACK
 			
-		set_color BLACK_BGD OR BLUE, ATR_LOW_AREA, 8
+		set_color BLACK_BGD OR GREEN, ATR_LOW_AREA, 8
 		set_color BLACK_BGD OR RED, ATR_MIDDLE_AREA, 16
 		; domyslnie w pamieci Hero atrybut ustawiony w set_color
 		set_hero_m
 
 ;============== D A T A     I N I T ===================
 	
-; ------ Czyta mape i inicjalizuje obiekty ( poki co drzwi ). ------
+; ------ Czyta mape i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
 		ld	ix,doors
+		ld	iy,passages
 		ld	hl,MAP
 		ld	de,0				; offset obiektow
 		ld	bc,MAP_HEIGHT * MAP_WIDTH	; licznik
@@ -78,6 +81,14 @@ next_mapchar:
 		jr	z,init_door_cls
 		cp	O_DOOR
 		jr	z,init_door_opn
+		cp	PASSAGE_CHAR
+		jr	nz,inc_counters
+		; --- ukryte przejscia ----
+		ld	(iy),e
+		ld	(iy+1),d
+		inc	iy
+		inc	iy
+		ld	(hl),WALL_CHAR
 		jr	inc_counters
 		; ---	drzwi   --- 
 		; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
@@ -97,7 +108,7 @@ inc_counters:	inc	hl
 		or	c
 		jr	nz,next_mapchar
 		; Hero kolor ---------
-		ld	a,YELLOW
+		ld	a,PURPLE OR BRIGHT
 		ld	(hero_a),a
 ; Na podstawie Y,X oblicza offset hero wzgledem poczatku MAP'y
 		ld	a,(hero_y)
@@ -182,7 +193,7 @@ begin:		call	field_of_view		; fov.z80
 
 wait_release:
 		call	scan_keyboard	
-		cp	0
+		or	a
 		jr	nz,wait_release
 
 		show_cursor
@@ -199,6 +210,8 @@ asdf:		cp	0
 		jp	z,move_door
 		cp	8			; bit 3: J
 		jp	z,trn_l
+		cp	16			; bit 4: S
+		jp	z,search
 		jr	key_press
 ; -------------------------
 trn_r:
@@ -293,17 +306,58 @@ right_before:
 		ld	a,(hl)		; a w A jego ikona (ascii)
 		ret
 
+;--------------------------------------------
+; Szuka ukrytych przejsc, przedmiotow itp.
+;--------------------------------------------
+search:
+		call 	right_before
 
-;-------- delay ---------
+		; ukryte przejscie ?
+		push	hl			; save char przed Hero
+		ld	b,OBJ_MAX
+		ld	hl,passages
+		call	check_offset16
+		pop	hl			; restore
 
-delay:
-		ld	bc,0ffffh
-		dloop:
-		dec	bc
-		ld	a,b
-		or	c
-		jr	nz,dloop
+		ld	a,b		
+		cp	0FFh			; a moze nic tu nie ma?
+		jp	z,key_press	
+		ld	(hl),FLOOR_CHAR		; jesli przejcie to zburz mur
+		jp	refresh	
+
+;------------------------------------------------------------------
+; szuka 16-bitowego offsetu na liscie objektow 
+; IN:	DE - offset do wyszukania
+; 	HL - adres listy offsetow objektow ( H - msb )
+; OUT:	B - jesli FFh = nie znaleziony offset
+;	, w przeciwnym razie index znalezionego objektu na liscie ( od 0 )
+; USED:	A, C, HL
+;------------------------------------------------------------------
+check_offset16:
+		ld	c,b		; save licznik objektow
+		ld	a,e
+	cell:
+		cp	(hl)
+		inc	hl
+		jr	nz,msb
+		ld	a,d
+		cp	(hl)
+		jr	nz,lsb
+		jr	_finded
+	lsb:	ld	a,e
+	msb:	inc	hl
+		djnz	cell	
+		ld	b,0FFh
 		ret
+	_finded:	
+		ld	a,c		; restore
+		sub	b
+		ld	b,a		; index znalezionego objekty ( od 0 )
+		ld	(hl),0		; zeruje ten ofset na liscie
+		dec	hl		; nieodkrytych przejsc
+		ld	(hl),0
+		ret	
+		
 ;------------------------	
 ; Wyjscie
 ;------------------------
@@ -340,7 +394,8 @@ hero_m		db	0			; pamiec atrybutu
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
 ;------ doors ---------
-doors:		ds	96			; max 32 doors: ofs lsb, msb, flag (op / cl)
+doors:		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)
+passages:	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
 door_before:	db	0			; numer drzwi na ktore patrzy Hero
 
 		include map.asm
