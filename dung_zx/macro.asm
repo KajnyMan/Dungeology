@@ -47,10 +47,10 @@ border_color	MACRO	_color
 ; =======================
 set_color	MACRO _paper_ink, _adress, _rows
 		LOCAL	colour_block
-	;	ld	a,_paper_ink
-	;	ld	d,a
-	;	ld	e,a
-		ld de, _paper_ink * 256 + _paper_ink
+		ld	a,_paper_ink
+		ld	d,a
+		ld	e,a
+	;	ld de, _paper_ink * 256 + _paper_ink
 		ld	hl,0000h
 		add	hl,sp			; save SP
 		ld	sp,_adress
