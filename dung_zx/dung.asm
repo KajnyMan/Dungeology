@@ -2,41 +2,9 @@
 ; 	D U N G E O L O G Y - zx spectrum
 ;-------------------------------------------;
 
-NORTH		equ	0
-EAST		equ	1
-SOUTH		equ	2
-WEST		equ	3
-
-MAP_HEIGHT	equ	12
-MAP_WIDTH	equ	32
-W3D_HEIGHT	equ	8
-W3D_WIDTH	equ	24
-WALL_CHAR	equ	'#'
-FLOOR_CHAR	equ	' '
-C_DOOR		equ	'+'
-O_DOOR		equ	'/'
-PASSAGE_CHAR	equ	'='
-STRING_DELIM	equ	'$'
-OBJ_MAX		equ	32
-
-FONTS		equ	3D00h	
-SCREEN		equ	4000h
-SCREEN_ATR	equ	5800h
-ATR_MIDDLE_AREA	equ	5A00h
-ATR_LOW_AREA	equ	5B00h
-
-CS_V		equ	0FEh
-A_G		equ	0FDh
-Q_T		equ	0FBh
-Num1_5		equ	0F7h
-Num0_6		equ	0EFh
-P_Y		equ	0DFh
-Enter_H		equ	0BFh
-Space_B		equ	7Fh
-
 BLACK		equ	0
 BLUE		equ	1
-RED		equ	2
+RED			equ	2
 PURPLE		equ	3
 GREEN		equ	4
 CYAN		equ	5
@@ -53,21 +21,58 @@ WHITE_BGD	equ	56
 BRIGHT		equ	64
 FLASH		equ	128
 
+NORTH		equ	0
+EAST		equ	1
+SOUTH		equ	2
+WEST		equ	3
+
+CS_V		equ	0FEh
+A_G			equ	0FDh
+Q_T			equ	0FBh
+Num1_5		equ	0F7h
+Num0_6		equ	0EFh
+P_Y			equ	0DFh
+Enter_H		equ	0BFh
+Space_B		equ	7Fh
+
+MAP_HEIGHT		equ	12
+MAP_WIDTH		equ	32
+W3D_HEIGHT		equ	8
+W3D_WIDTH		equ	24
+WALL_CHAR		equ	'#'
+FLOOR_CHAR		equ	' '
+C_DOOR			equ	'+'
+O_DOOR			equ	'/'
+PASSAGE_CHAR	equ	'='
+STRING_DELIM	equ	'$'
+OBJ_MAX			equ	32
+
+FONTS			equ	3D00h	
+SCREEN			equ	4000h
+SCREEN_TOP		equ	5800h
+MSG_AREA		equ 4888h	; linie 96-127
+MSG_LINE		equ	48C0h
+SCREEN_ATR		equ	5800h
+ATR_MAP_TOP		equ	5980h
+ATR_MSG_TOP		equ	5A00h
+ATR_3D_TOP		equ	5B00h
+
 
 		include	macro.asm
 		
 		org	8000h
-		
 		di
-		clear_lines 191
+		
+;============== D A T A     I N I T ===================
+		clear_lines SCREEN_TOP, 191
 		border_color BLACK
 			
-		set_color BLACK_BGD OR GREEN, ATR_LOW_AREA, 8
-		set_color BLACK_BGD OR RED, ATR_MIDDLE_AREA, 16
+		set_color BLACK_BGD OR GREEN, ATR_3D_TOP, 8
+		set_color BLACK_BGD OR YELLOW, ATR_MSG_TOP, 4
+		set_color BLACK_BGD OR RED, ATR_MAP_TOP, 12
 		; domyslnie w pamieci Hero atrybut ustawiony w set_color
 		set_hero_m
 
-;============== D A T A     I N I T ===================
 	
 ; ------ Czyta mape i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
 		ld	ix,doors
@@ -164,9 +169,10 @@ inc_counters:	inc	hl
 		jp	begin
 
 refresh:	hide_cursor
-		; ------------------------------------------- ; Powidok po fov poprzedniego ruchu na ekran
+		; ------------------------------------------- 
+		; Powidok po fov poprzedniego ruchu na ekran
 		; -------------------------------------------
-		clear_lines 64
+		clear_lines SCREEN_TOP, 64
 		call	prev_fov
 
 		; -----------------------
@@ -200,7 +206,8 @@ wait_release:
 
 key_press:
 		call	scan_keyboard	
-asdf:		cp	0
+;asdf:
+		cp	0
 		jp	z,key_press
 		cp	1			; bit 0: I
 		jp	z,ismove
@@ -215,6 +222,7 @@ asdf:		cp	0
 		jr	key_press
 ; -------------------------
 trn_r:
+		call	message_area_clear
 		ld	hl,hero_d
 		inc	(hl)
 		ld	a,(hl)
@@ -223,6 +231,7 @@ trn_r:
 		ld	(hl),NORTH
 		jp	refresh
 trn_l:
+		call	message_area_clear
 		ld	hl,hero_d
 		dec	(hl)
 		ld	a,(hl)
@@ -232,17 +241,37 @@ trn_l:
 		jp	refresh
 
 ; otwiera lub zamyka drzwi
-move_door:	call	right_before
+move_door:
+		call	message_area_clear
+		call	right_before
 		cp	C_DOOR
 		jr	z,open_door
 		cp	O_DOOR
 		jr	z,close_door
 		jp	key_press	; nie ma tutaj drzwi! Wypad
-open_door:	ld	(hl),O_DOOR	
+open_door:
+		ld	(hl),O_DOOR	
 		jp	refresh
 close_door:	ld	(hl),C_DOOR
 		jp	refresh
 
+; ---------------------------------------------------------------
+; Jesli bylo powiadomienie w poprzednim ruchu - trzeba wyczyscic
+; ---------------------------------------------------------------
+message_area_clear:
+		ld	a,(message_flag)
+		or	a
+		ret	z	
+;		ld	de,MSG_LINE + $A
+;		ld	bc,msg_clear
+;		call	pstring	
+
+		clear_txtline	MSG_LINE	
+
+		xor	a
+		ld	(message_flag),a
+		ret
+		
 ; Sprawdza czy ruch jest mozliwy
 ismove:		call	right_before
 		cp	WALL_CHAR
@@ -250,6 +279,7 @@ ismove:		call	right_before
 		cp	C_DOOR
 		jp	z,key_press
 		call	move
+		call	message_area_clear
 		jp	refresh
 
 ;-------------------------------------------------
@@ -310,20 +340,30 @@ right_before:
 ; Szuka ukrytych przejsc, przedmiotow itp.
 ;--------------------------------------------
 search:
+		ld	a,1
+		ld	(message_flag),a		; trzeba bedzie wyczyscic powiadomienia
 		call 	right_before
 
 		; ukryte przejscie ?
-		push	hl			; save char przed Hero
+		push	hl					; save char przed Hero
 		ld	b,OBJ_MAX
 		ld	hl,passages
 		call	check_offset16
-		pop	hl			; restore
+		pop		hl					; restore
 
 		ld	a,b		
-		cp	0FFh			; a moze nic tu nie ma?
-		jp	z,key_press	
-		ld	(hl),FLOOR_CHAR		; jesli przejcie to zburz mur
+		cp	0FFh					; a moze nic tu nie ma?
+		jp	z,nothing_here	
+		ld	(hl),FLOOR_CHAR			; jesli przejcie to zburz mur
+		ld	de,MSG_LINE + $A
+		ld	bc,msg_psgfinded
+		call	pstring
 		jp	refresh	
+	nothing_here:
+		ld	de,MSG_LINE + $A
+		ld	bc,msg_nothing
+		call	pstring
+		jp	key_press
 
 ;------------------------------------------------------------------
 ; szuka 16-bitowego offsetu na liscie objektow 
@@ -344,8 +384,10 @@ check_offset16:
 		cp	(hl)
 		jr	nz,lsb
 		jr	_finded
-	lsb:	ld	a,e
-	msb:	inc	hl
+	lsb:
+		ld	a,e
+	msb:
+		inc	hl
 		djnz	cell	
 		ld	b,0FFh
 		ret
@@ -353,7 +395,7 @@ check_offset16:
 		ld	a,c		; restore
 		sub	b
 		ld	b,a		; index znalezionego objekty ( od 0 )
-		ld	(hl),0		; zeruje ten ofset na liscie
+		ld	(hl),0	; zeruje ten ofset na liscie
 		dec	hl		; nieodkrytych przejsc
 		ld	(hl),0
 		ret	
@@ -362,7 +404,7 @@ check_offset16:
 ; Wyjscie
 ;------------------------
 _halt:
-		clear_screen
+			clear_screen
 exit:		ret
 ;--------------------------
 
@@ -375,28 +417,31 @@ exit:		ret
 ;=========     D A T A     =========
 
 ;------ map -----------
-map_height:	db	12
-map_width:	db	32	
+map_height	db	12
+map_width	db	32	
 ;---- windows ---------
-map_position:	db	 0,0			; wzgl lew-gorn rogu terminala	
-w3d_position:	db	4,16			; X, Y 
+map_position	db	 0,0	; wzgl lew-gorn rogu terminala	
+w3d_position	db	4,16	; X, Y 
 ; -------------------------------------
-borders:	ds	4			; Ymin, Ymax, Xmin, Xmax 
+borders			ds	4		; Ymin, Ymax, Xmin, Xmax 
+message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
 ;------ hero ----------
-hero_yx:
-hero_x:		db	2
-hero_y:		db	2	
-hero_d:		db	1			; zwrot : 0 - N, 1 - E itd
-hero_o:		ds	2			; 16-bit offset wzgl .MAP
-hero_i		db	'^','>','v','<'		; ikony Hero
-hero_a		db	0			; kolory ( atrybut )
-hero_m		db	0			; pamiec atrybutu
+hero_yx
+hero_x		db	2
+hero_y		db	2	
+hero_d		db	1						; zwrot : 0 - N, 1 - E itd
+hero_o		ds	2						; 16-bit offset wzgl .MAP
+hero_i		db	'^','>','v','<'			; ikony Hero
+hero_a		db	0						; kolory ( atrybut )
+hero_m		db	0						; pamiec atrybutu
 hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
 ;------ doors ---------
-doors:		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)
-passages:	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
-door_before:	db	0			; numer drzwi na ktore patrzy Hero
+doors		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)
+passages	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
+door_before	db	0				; numer drzwi na ktore patrzy Hero
 
+		include	messages.asm
 		include map.asm
+
 		end	8000h
