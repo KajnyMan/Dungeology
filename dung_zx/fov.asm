@@ -6,8 +6,8 @@ field_of_view:
 ;=============
 	; fov_coords - offsety tiles na ekranie ( zawsze stale )
 	; fov_offsets - offsety tiles na mapie ( zaleza od szerokosci mapy )
-	; Ustawienie wskaznika fov_coords w zaleznosci kierunku patrzenia. 
 
+	; Ustawienie wskaznika fov_coords w zaleznosci kierunku patrzenia. 
 	; wariant z 4 bajtowa tabelka ( staly krok o 36B )
 		ld	hl,fov_diroffset
 		ld	a,(hero_d)

@@ -21,7 +21,7 @@ print_o_door_3d:
 		
 		ld	b,(iy-1)		; tenze licznik ustawiony
 		ld	a,b			; jesli zero to nie ma sprite'a
-		cp	0			; w tej pozycji, a wiec wypad
+		or	a			; w tej pozycji, a wiec wypad
 		jp	z,printout
 	nxt:	push	bc
 		ld	b,(iy+1)

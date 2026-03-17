@@ -2,38 +2,38 @@
 ; 	D U N G E O L O G Y - zx spectrum
 ;-------------------------------------------;
 
-BLACK		equ	0
-BLUE		equ	1
-RED			equ	2
-PURPLE		equ	3
-GREEN		equ	4
-CYAN		equ	5
-YELLOW		equ	6
-WHITE		equ	7
-BLACK_BGD	equ	0
-BLUE_BGD	equ	8
-RED_BGD		equ	16
-PURPLE_BGD	equ	24	
-GREEN_BGD	equ	32	
-CYAN_BGD	equ	40
-YELLOW_BGD	equ	48
-WHITE_BGD	equ	56
-BRIGHT		equ	64
-FLASH		equ	128
+BLACK			equ	0
+BLUE			equ	1
+RED				equ	2
+PURPLE			equ	3
+GREEN			equ	4
+CYAN			equ	5
+YELLOW			equ	6
+WHITE			equ	7
+BLACK_BGD		equ	0
+BLUE_BGD		equ	8
+RED_BGD			equ	16
+PURPLE_BGD		equ	24	
+GREEN_BGD		equ	32	
+CYAN_BGD		equ	40
+YELLOW_BGD		equ	48
+WHITE_BGD		equ	56
+BRIGHT			equ	64
+FLASH			equ	128
 
-NORTH		equ	0
-EAST		equ	1
-SOUTH		equ	2
-WEST		equ	3
+NORTH			equ	0
+EAST			equ	1
+SOUTH			equ	2
+WEST			equ	3
 
-CS_V		equ	0FEh
-A_G			equ	0FDh
-Q_T			equ	0FBh
-Num1_5		equ	0F7h
-Num0_6		equ	0EFh
-P_Y			equ	0DFh
-Enter_H		equ	0BFh
-Space_B		equ	7Fh
+CS_V			equ	0FEh
+A_G				equ	0FDh
+Q_T				equ	0FBh
+Num1_5			equ	0F7h
+Num0_6			equ	0EFh
+P_Y				equ	0DFh
+Enter_H			equ	0BFh
+Space_B			equ	7Fh
 
 MAP_HEIGHT		equ	12
 MAP_WIDTH		equ	32
@@ -54,7 +54,7 @@ MSG_AREA		equ 4888h	; linie 96-127
 MSG_LINE		equ	48C0h
 SCREEN_ATR		equ	5800h
 ATR_MAP_TOP		equ	5980h
-ATR_MSG_TOP		equ	5A00h
+ATR_MSG_TOP 	equ	5A00h
 ATR_3D_TOP		equ	5B00h
 
 
@@ -355,12 +355,12 @@ search:
 		cp	0FFh					; a moze nic tu nie ma?
 		jp	z,nothing_here	
 		ld	(hl),FLOOR_CHAR			; jesli przejcie to zburz mur
-		ld	de,MSG_LINE + $A
+		ld	de,MSG_LINE + $9
 		ld	bc,msg_psgfinded
 		call	pstring
 		jp	refresh	
 	nothing_here:
-		ld	de,MSG_LINE + $A
+		ld	de,MSG_LINE + $6
 		ld	bc,msg_nothing
 		call	pstring
 		jp	key_press

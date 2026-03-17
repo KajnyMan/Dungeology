@@ -39,19 +39,24 @@ pchar:
 		ld	bc,FONTS
 		sub	20h			; start od spacji, a
 		add	a,a			; x2
-		ld	hl,0
+		ld	h,0
 		ld	l,a	
 		add	hl,hl	
 		add	hl,hl			; x8
 		add	hl,bc			; adres char w ROM		
-		ld	b,8
-next_bitline:
+	REPT	8
 		ld	a,(hl)
 		ld	(de),a
 		inc	hl
 		inc	d
-		dec	b
-		jr	nz,next_bitline
+	ENDM
+;next_bitline:
+;		ld	b,8
+;		ld	a,(hl)
+;		ld	(de),a
+;		inc	hl
+;		inc	d
+;		djnz	next_bitline
 		ret
 
 
