@@ -67,8 +67,11 @@ ATR_3D_TOP		equ	5B00h
 		clear_lines SCREEN_TOP, 191
 		border_color BLACK
 			
-		set_color BLACK_BGD OR GREEN, ATR_3D_TOP, 8
+		; "wygaszone" okno 3D przy rysowaniu
+		set_color BLACK_BGD OR BLACK, ATR_3D_TOP, 8	
+		; kolory okna powiadomien
 		set_color BLACK_BGD OR YELLOW, ATR_MSG_TOP, 4
+		; kolory okna mapy
 		set_color BLACK_BGD OR RED, ATR_MAP_TOP, 12
 		; domyslnie w pamieci Hero atrybut ustawiony w set_color
 		set_hero_m
@@ -174,6 +177,8 @@ refresh:	hide_cursor
 		; -------------------------------------------
 		clear_lines SCREEN_TOP, 64
 		call	prev_fov
+		; "wygaszone" okno 3D przy rysowaniu
+		set_color BLACK_BGD OR BLACK, ATR_3D_TOP, 8
 
 		; -----------------------
 		; Pole widzenia na ekran
@@ -227,7 +232,7 @@ trn_r:
 		inc	(hl)
 		ld	a,(hl)
 		cp	WEST+1
-		jr	nz,refresh
+		jp	nz,refresh
 		ld	(hl),NORTH
 		jp	refresh
 trn_l:
@@ -290,13 +295,13 @@ move:
 		ld	(hero_o),de	; Hero new offset
 		
 		ld	bc,(hero_x)
-		push	bc		; SAVE Y,X
 		call	gotoyx
-		ld	a,FLOOR_CHAR
-		call	pchar
-		pop	bc		; RESTORE Y,X
+
 		ld	a,(hero_m)
 		call	setatr
+
+		ld	a,FLOOR_CHAR
+		call	pchar
 
 		ld	hl,hero_s	; /
 		ld	a,(hero_d)	; Przesuniecie kursora

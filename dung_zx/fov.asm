@@ -169,6 +169,8 @@ field_of_view:
 		djnz	.printloop			
 		ld	hl,(iterator)
 		ld	(hl),DELIM
+		; wlacza "widzialnosc" okna 3D
+		set_color BLACK_BGD OR GREEN, ATR_3D_TOP, 8
 		ret
 
 ;-----------------------------------
@@ -185,8 +187,9 @@ is_visible:
 		ld	e,a
 ;		ld	d,0
 		add	hl,de			; wskaznik na index zaslony
-	three:	ld	a,(hl)	
-		cp	0
+	three:
+		ld	a,(hl)	
+		or	a
 		jp	z,vsbl			; jak 0 - wypad
 		ld	c,a			; Save index
 		add	a,a
@@ -359,15 +362,18 @@ list_indexes   ; indeksy fov_list  | iteracje petli
 		db	14, 0,0		;07
 		db	14, 0,0		;08
 		db	15,12,0		;09
-		db	14,12,0		;10
+;		db	14,12,0		;10
+		db	14,11,0		;10
 		db	14,11,0		;11
-		db	14,10,0		;12
+;		db	14,10,0		;12
+		db	14,11,0		;12
 		db	13,10,0		;13
 		db	15,12,8		;14
 		db	14,12,8		;15
 		db	14,11,7		;16
 		db	14,10,6		;17
 		db	13,10,6		;18
+
 ;--------------------------------------------------------------------------
 ; Lista obiektow wszystkich obiektow tile potencjalnie widocznych dla Hero
 ;--------------------------------------------------------------------------
