@@ -71,4 +71,19 @@ set_hero_m	MACRO _paper_ink
 		ENDIF
 		ld	(hero_m),a
 		ENDM
-
+; =========================
+; IN : DE - adres Tile na ekranie, A'- atrybut
+print_attribute_2buffer	MACRO
+		ld	h,ATR3_BUF_MSB
+		ld	l,e
+		ex	af,af'
+		ld	(hl),a
+		ex	af,af'
+		ENDM
+; ========================
+atrbuf_2_atr	MACRO
+		ld	de,ATR3
+		ld	hl,ATR3_BUF
+		ld	bc,32 * 8
+		ldir
+		ENDM

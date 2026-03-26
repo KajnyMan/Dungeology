@@ -1,6 +1,3 @@
-DELIM		equ	0FFh
-PREV_WALL	equ	'.'
-
 ;=============
 field_of_view:
 ;=============
@@ -8,8 +5,8 @@ field_of_view:
 	; fov_offsets - offsety tiles na mapie ( zaleza od szerokosci mapy )
 
 	; Ustawienie wskaznika fov_coords w zaleznosci kierunku patrzenia. 
-	; wariant z 4 bajtowa tabelka ( staly krok o 36B )
-		ld	hl,fov_diroffset
+	; wariant z 4 bajtowa tabelka fov_shift ( staly krok o 36B )
+		ld	hl,fov_shift
 		ld	a,(hero_d)
 		ld	d,0
 		ld	e,a
@@ -44,23 +41,26 @@ field_of_view:
 		ld	hl,(coords_pointer)
 		; Y
 		ld	e,(hl)			; offset Y tile
-		ld	a,(hero_y)
-		add	a,e			; dodatnie Y Hero
-		cp	(iy)			; jesli Y tile
-		jr	c,out1			; poza rozmiarem mapy to
-		cp	(iy+1)		; konczymy ten przebieg 
-		jr	nc,out1
-
+;		ld	a,(hero_mapY)
+;		add	a,e			; dodatnie mapY Hero
+;		cp	(iy)			; jesli Y tile
+;		jr	c,out1			; poza rozmiarem mapy to
+;		cp	(iy+1)		; konczymy ten przebieg 
+;		jr	nc,out1
+	ld	a,HERO_Y
+	add	a,e
 		ld	(ix),a			; do Y tile i zapis do fov_list
 		inc	hl
 		; X
 		ld	d,(hl)			; offset X tile
-		ld	a,(hero_x)
-		add	a,d			; dodatnie X Hero
-		cp	(iy+2)		; jesli X tile
-		jr	c,out2			; poza rozmiarem mapy to				
-		cp	(iy+3)		; konczymy ten przebieg 
-		jr	nc,out2
+;		ld	a,(hero_mapX)
+;		add	a,d			; dodatnie X Hero
+;		cp	(iy+2)		; jesli X tile
+;		jr	c,out2			; poza rozmiarem mapy to				
+;		cp	(iy+3)		; konczymy ten przebieg 
+;		jr	nc,out2
+	ld	a,HERO_X
+	add	a,d
 		ld	(ix+1),a		; do X tile i zapis do fov_list
 
 	; ASCII char
@@ -84,7 +84,7 @@ field_of_view:
 		ld	a,b
 		cp	4			; przed Hero
 		jr	nz,shift
-		call	roomlabel		; to wbij nr drzwi w sprite'a 3D
+	;	call	roomlabel		; to wbij nr drzwi w sprite'a 3D
 
 	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
 	; i wskaznika listy FOV
@@ -156,7 +156,6 @@ field_of_view:
 
 		; Print 3D
 		pop	af			; Restore Tile.char
-; jr printout
 		cp	WALL_CHAR
 		jp	z,printwall_3d		; Sprite na ekran
 		cp	C_DOOR
@@ -170,7 +169,8 @@ field_of_view:
 		ld	hl,(iterator)
 		ld	(hl),DELIM
 		; wlacza "widzialnosc" okna 3D
-		set_color BLACK_BGD OR GREEN, ATR_3D_TOP, 8
+	;	set_color BLACK_BGD OR GREEN, ATR_3D_TOP, 8
+		atrbuf_2_atr
 		ret
 
 ;-----------------------------------
@@ -419,7 +419,7 @@ fov_coords
 		db	        1,-1,  0,-1,  -1,-1
 		db	        1,0,        -1,0
 ; Tabela przesuniec w tabeli fov_coord. Przesuniecie zalezy od zwrotu Hero
-fov_diroffset	db	0, 36, 72, 108
+fov_shift	db	0, 36, 72, 108
 ; Pola wskaznikow
 coords_pointer	dw	0000h
 offset_pointer	dw	0000h

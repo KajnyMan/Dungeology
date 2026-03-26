@@ -20,12 +20,16 @@ YELLOW_BGD		equ	48
 WHITE_BGD		equ	56
 BRIGHT			equ	64
 FLASH			equ	128
+WALL3D_ATR		equ BLACK_BGD OR BLUE OR BRIGHT
+C_DOOR3D_ATR	equ	BLACK_BGD OR BLUE OR BRIGHT
+O_DOOR3D_ATR	equ	BLACK_BGD OR BLUE OR BRIGHT
 
 NORTH			equ	0
 EAST			equ	1
 SOUTH			equ	2
 WEST			equ	3
 
+	; klawiatura
 CS_V			equ	$FE
 A_G				equ	$FD
 Q_T				equ	$FB
@@ -34,33 +38,46 @@ Num0_6			equ	$EF
 P_Y				equ	$DF
 Enter_H			equ	$BF
 Space_B			equ	$7F
-
+	; mapa i hero
 MAP_HEIGHT		equ	12
 MAP_WIDTH		equ	32
 W3D_HEIGHT		equ	8
 W3D_WIDTH		equ	24
+W3D_YX			equ	$1101
 WALL_CHAR		equ	'#'
+PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
 C_DOOR			equ	'+'
 O_DOOR			equ	'/'
 PASSAGE_CHAR	equ	'='
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
+DELIM			equ	0FFh
 OBJ_MAX			equ	32
-
+HERO_YX			equ $0505
+HERO_Y			equ	5
+HERO_X			equ	5
+	; adresy stale
 FONTS			equ	$3D00	
 SCREEN			equ	$4000
 SCREEN_TOP		equ	$5800
+SCREEN_ATR		equ	$5800
+ATR3			equ	$5A00
 MSG_AREA		equ $4888	; linie 96-127
 MSG_LINE		equ	$48C0
-SCREEN_ATR		equ	$5800
 ATR_MAP_TOP		equ	$5980
 ATR_MSG_TOP 	equ	$5A00
 ATR_3D_TOP		equ	$5B00
-
+FONTS_MSB		equ $3D
+SCR1_MSB		equ $40
+SCR2_MSB		equ $48
+SCR3_MSB		equ $50
+	; adresy ruchome
+ATR3_BUF		equ	$F000
+ATR3_BUF_MSB	equ	$F0
+ATR_BUF_TOP		equ	$F100
 TILES			equ	$F800
 TILES_MSB		equ $F8
-FONTS_MSB		equ $3D
 
 
 		include	macro.asm
@@ -105,58 +122,63 @@ next_mapchar:
 		jr	inc_counters
 		; ---	drzwi   --- 
 		; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
-init_door_cls:	ld	(ix+2),1	
+	init_door_cls:
+		ld	(ix+2),1	
 		jr	init_offset
-init_door_opn:	ld	(ix+2),0
-init_offset:	ld	(ix),e				; offset obiektu lsb
+	init_door_opn:
+		ld	(ix+2),0
+	init_offset:
+		ld	(ix),e				; offset obiektu lsb
 		ld	(ix+1),d			; msb
 		inc	ix			
 		inc	ix
 		inc	ix
 		; -----------------
-inc_counters:	inc	hl
+	inc_counters:
+		inc	hl
 		inc	de
 		dec	bc	
 		ld	a,b
 		or	c
 		jr	nz,next_mapchar
+
 		; Hero kolor ---------
-		ld	a,PURPLE OR BRIGHT
+		ld	a,BLACK_BGD OR PURPLE OR BRIGHT
 		ld	(hero_a),a
 ; Na podstawie Y,X oblicza offset hero wzgledem poczatku MAP'y
-		ld	a,(hero_y)
+		ld	a,(hero_mapY)
 		ld	c,a
 		ld	a,(map_width)
 		ld	b,a
 		call	mul8
-		ld	a,(hero_x)
+		ld	a,(hero_mapX)
 		ld	d,0
 		ld	e,a
 		add	hl,de	
 		ld	(hero_o),hl
 
 ; Dodaje do Y i X Hero przesuniecie MAP'y
-		ld	de,(map_position)
-		ld	hl,(hero_yx)
-		add	hl,de
-		ld	(hero_yx),hl 
+;		ld	de,(map_position)
+;		ld	hl,(hero_yx)
+;		add	hl,de
+;		ld	(hero_yx),hl 
 
 ; Oblicza granice widzialnosci Tiles
-		ld	ix,borders
-		; Y min
-		ld	a,(map_position)	
-		ld	(ix),a
-		; Y max
-		ld	hl,map_height
-		add	a,(hl)
-		ld	(ix+1),a
-		; X min
-		ld	a,(map_position + 1)
-		ld	(ix+2),a
-		; X max 
-		inc	hl			; map_width
-		add	a,(hl)
-		ld	(ix+3),a
+;		ld	ix,borders
+;		; Y min
+;		ld	a,(map_position)	
+;		ld	(ix),a
+;		; Y max
+;		ld	hl,map_height
+;		add	a,(hl)
+;		ld	(ix+1),a
+;		; X min
+;		ld	a,(map_position + 1)
+;		ld	(ix+2),a
+;		; X max 
+;		inc	hl			; map_width
+;		add	a,(hl)
+;		ld	(ix+3),a
 
 ; Oblicza i wypelnia tabele neighbor_offs
 		ld	ix,neighbor_offs
@@ -170,14 +192,7 @@ inc_counters:	inc	hl
 ; dostanie swoj offset wzgledem Hero
 		call	calc_fov	
 
-; Przygotowuje alternatywne rejestry 
-	;	exx
-	;	ld	b,FONTS_MSB
-	;	ld	c,TILES_MSB
-	;	exx
-
 ; ===============  M A I N    L O O P =================
- 
 
 		hide_cursor
 		jp	begin
@@ -186,10 +201,11 @@ refresh:	hide_cursor
 		; ------------------------------------------- 
 		; Powidok po fov poprzedniego ruchu na ekran
 		; -------------------------------------------
-		clear_lines SCREEN_TOP, 64
-		call	prev_fov
+		clear_lines SCREEN_TOP, 191
+;		call	prev_fov
 		; "wygaszone" okno 3D przy rysowaniu
-		set_color BLACK_BGD OR BLACK, ATR_3D_TOP, 8
+		set_color BLACK_BGD OR BLUE, ATR_3D_TOP, 8
+		set_color BLACK_BGD OR BLUE, ATR_BUF_TOP, 8
 
 		; -----------------------
 		; Pole widzenia na ekran
@@ -205,7 +221,7 @@ begin:		call	field_of_view		; fov.z80
 		ld	c,a		; i zwrotu
 		add	hl,bc		; ^ > v <
 		ld	a,(hl)
-		ld	bc,(hero_yx)
+		ld	bc,HERO_YX		;stala pozycja HERO na ekranie
 		push	bc
 		call	gotoyx
 		call	pchar
@@ -305,28 +321,28 @@ ismove:		call	right_before
 move:
 		ld	(hero_o),de	; Hero new offset
 		
-		ld	bc,(hero_x)
-		call	gotoyx
+;		ld	bc,(hero_mapX)
+;		call	gotoyx
 
-		ld	a,(hero_m)
-		call	setatr
+;		ld	a,(hero_m)
+;		call	setatr
 
-		ld	a,FLOOR_CHAR
-		call	pchar
+;		ld	a,FLOOR_CHAR
+;		call	pchar
 
 		ld	hl,hero_s	; /
 		ld	a,(hero_d)	; Przesuniecie kursora
 		add	a,a		; do nowej pozycji
 		ld	e,a		; Hero
 		ld	d,00h
-		add	hl,de 
-		ld	a,(hero_y)
+		add	hl,de
+		ld	a,(hero_mapX)
 		add	a,(hl)
-		ld	(hero_y),a
+		ld	(hero_mapX),a
 		inc	hl
-		ld	a,(hero_x)
+		ld	a,(hero_mapY)
 		add	a,(hl)
-		ld	(hero_x),a	; \____________
+		ld	(hero_mapY),a	; \____________
 		ret
 
 ;-----------------------------------------
@@ -436,21 +452,22 @@ exit:		ret
 map_height	db	12
 map_width	db	32	
 ;---- windows ---------
-map_position	db	 0,0	; wzgl lew-gorn rogu terminala	
-w3d_position	db	4,16	; X, Y 
+;map_position	db	 0,0	; wzgl lew-gorn rogu terminala	
+w3d_position	db	1,17	; X, Y 
 ; -------------------------------------
 borders			ds	4		; Ymin, Ymax, Xmin, Xmax 
 message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
 ;------ hero ----------
-hero_yx
-hero_x		db	2
-hero_y		db	2	
+hero_mapYX
+hero_mapX	db	2
+hero_mapY	db	2	
 hero_d		db	1						; zwrot : 0 - N, 1 - E itd
 hero_o		ds	2						; 16-bit offset wzgl .MAP
 hero_i		db	'^','>','v','<'			; ikony Hero
 hero_a		db	0						; kolory ( atrybut )
 hero_m		db	0						; pamiec atrybutu
-hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
+;hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
+hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
 ;------ doors ---------
 doors		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)

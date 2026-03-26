@@ -86,11 +86,14 @@ setatr:
 ; IN:	DE - adres gdzie ma pojawic sie string
 ;	BC - adres stringa:o wyswietlenia 
 ; ==================================================================	
-ptile:
+print_tile_line:
 		ld	a,(bc)
 		cp	TILE_EOL
 		jp	z,ptile_out
-		ld	hl,0
+
+		print_attribute_2buffer
+
+		ld	h,0
 		ld	l,a	
 		add	hl,hl	
 		add	hl,hl	
@@ -108,7 +111,7 @@ ptile:
 		pop	de
 		inc	de
 		inc	bc
-		jr	ptile	
+		jr	print_tile_line	
 ptile_out:
 		ret
 ;========
