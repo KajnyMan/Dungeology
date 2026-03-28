@@ -21,13 +21,9 @@ WHITE_BGD		equ	56
 BRIGHT			equ	64
 FLASH			equ	128
 WALL3D_ATR		equ BLACK_BGD OR BLUE OR BRIGHT
-C_DOOR3D_ATR	equ	BLACK_BGD OR BLUE OR BRIGHT
+C_DOOR3D_ATR	equ	BLACK_BGD OR BLUE OR BRIGHT 
 O_DOOR3D_ATR	equ	BLACK_BGD OR BLUE OR BRIGHT
-
-NORTH			equ	0
-EAST			equ	1
-SOUTH			equ	2
-WEST			equ	3
+SCREEN_WIDTH	equ	32
 
 	; klawiatura
 CS_V			equ	$FE
@@ -41,9 +37,19 @@ Space_B			equ	$7F
 	; mapa i hero
 MAP_HEIGHT		equ	12
 MAP_WIDTH		equ	32
-W3D_HEIGHT		equ	8
-W3D_WIDTH		equ	24
-W3D_YX			equ	$1101
+FOV_Y			equ 1
+FOV_X			equ 10
+FOV_YX			equ	( FOV_Y * 256 ) + FOV_X 
+FOV_WIDTH		equ 9
+FOV_HEIGHT		equ 9
+FOV_FRAME_Y		equ	FOV_Y - 1	
+FOV_FRAME_X		equ	FOV_X - 1	
+FOV_FRAME_YX	equ	( FOV_FRAME_Y * 256 ) + FOV_FRAME_X	
+W3D_HEIGHT		equ	6
+W3D_WIDTH		equ	9
+W3D_Y			equ	17
+W3D_X			equ	10
+W3D_YX			equ	( W3D_Y * 256 ) + W3D_X 
 WALL_CHAR		equ	'#'
 PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
@@ -54,9 +60,16 @@ STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
 DELIM			equ	0FFh
 OBJ_MAX			equ	32
-HERO_YX			equ $0505
-HERO_Y			equ	5
-HERO_X			equ	5
+HERO_Y			equ	FOV_Y + 4
+HERO_X			equ FOV_X + 4 	
+;HERO_YX			equ $0505
+HERO_YX			equ ( HERO_Y * 256 ) + HERO_X 
+
+NORTH			equ	0
+EAST			equ	1
+SOUTH			equ	2
+WEST			equ	3
+
 	; adresy stale
 FONTS			equ	$3D00	
 SCREEN			equ	$4000
@@ -65,6 +78,7 @@ SCREEN_ATR		equ	$5800
 ATR3			equ	$5A00
 MSG_AREA		equ $4888	; linie 96-127
 MSG_LINE		equ	$48C0
+SCR3			equ	$5000
 ATR_MAP_TOP		equ	$5980
 ATR_MSG_TOP 	equ	$5A00
 ATR_3D_TOP		equ	$5B00
@@ -73,6 +87,9 @@ SCR1_MSB		equ $40
 SCR2_MSB		equ $48
 SCR3_MSB		equ $50
 	; adresy ruchome
+;FOV_ADR			equ	$4021
+FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
+W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X	
 ATR3_BUF		equ	$F000
 ATR3_BUF_MSB	equ	$F0
 ATR_BUF_TOP		equ	$F100
@@ -88,6 +105,8 @@ TILES_MSB		equ $F8
 ;============== D A T A     I N I T ===================
 		clear_lines SCREEN_TOP, 191
 		border_color BLACK
+	
+;		call	print_frames
 			
 		; "wygaszone" okno 3D przy rysowaniu
 		set_color BLACK_BGD OR BLACK, ATR_3D_TOP, 8	
@@ -157,11 +176,6 @@ next_mapchar:
 		add	hl,de	
 		ld	(hero_o),hl
 
-; Dodaje do Y i X Hero przesuniecie MAP'y
-;		ld	de,(map_position)
-;		ld	hl,(hero_yx)
-;		add	hl,de
-;		ld	(hero_yx),hl 
 
 ; Oblicza granice widzialnosci Tiles
 ;		ld	ix,borders
@@ -191,21 +205,28 @@ next_mapchar:
 ; W zaleznosci od kierunku patrzenia kazde tile w polu widzenia
 ; dostanie swoj offset wzgledem Hero
 		call	calc_fov	
-
+		
+;	Rysuje ramki okien fov i w3d
+		
 ; ===============  M A I N    L O O P =================
 
-		hide_cursor
 		jp	begin
 
-refresh:	hide_cursor
-		; ------------------------------------------- 
-		; Powidok po fov poprzedniego ruchu na ekran
-		; -------------------------------------------
-		clear_lines SCREEN_TOP, 191
-;		call	prev_fov
+refresh:
+		; czyszczenie okna 3d
+		ld	hl,W3D_ADR
+		ld	b,W3D_HEIGHT
+		call	clear_txtlines
+;		clear_lines	SCREEN_TOP, 64
+
+		; czyszczenie okna fov
+		ld	hl,FOV_ADR	
+		ld	b,FOV_HEIGHT
+		call	clear_txtlines
+
 		; "wygaszone" okno 3D przy rysowaniu
-		set_color BLACK_BGD OR BLUE, ATR_3D_TOP, 8
-		set_color BLACK_BGD OR BLUE, ATR_BUF_TOP, 8
+		set_color BLACK_BGD OR BLACK, ATR_3D_TOP, 8
+		set_color BLACK_BGD OR BLACK, ATR_BUF_TOP, 8
 
 		; -----------------------
 		; Pole widzenia na ekran
@@ -233,8 +254,6 @@ wait_release:
 		call	scan_keyboard	
 		or	a
 		jr	nz,wait_release
-
-		show_cursor
 
 key_press:
 		call	scan_keyboard	
@@ -473,6 +492,7 @@ neighbor_offs:	db	0,1,0,-1
 doors		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)
 passages	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
 door_before	db	0				; numer drzwi na ktore patrzy Hero
+;- tabela adresow poczatkow lini 'tekstowych' -----
 
 		include	messages.asm
 		include map.asm

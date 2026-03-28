@@ -108,8 +108,8 @@ field_of_view:
 	; ----------------------------------------------------
 		ld	b,18			; ilosc mozliwych pol widzenia
 		; Ustawienie wskaznikow
-		ld	hl,prev_fov_list
-		ld	(iterator),hl
+	;	ld	hl,prev_fov_list
+	;	ld	(iterator),hl
 .printloop:
 		push	bc
 
@@ -138,19 +138,19 @@ field_of_view:
 		ld	b,(ix)			; Y
 		ld	c,(ix+1)		; X	
 		; Kopia Y i X tile do prev_fov_list
-		ld	hl,(iterator)
-		ld	(hl),b
-		inc	hl
-		ld	(hl),c
-		inc	hl
+	;	ld	hl,(iterator)
+	;	ld	(hl),b
+	;	inc	hl
+	;	ld	(hl),c
+	;	inc	hl
 		ld	a,(ix+2)		; Tile char
 		push	af			; Save Tile.char
-		ld	(hl),a
-		inc	hl
-		ld	(iterator),hl
+	;	ld	(hl),a
+	;	inc	hl
+	;	ld	(iterator),hl
 		
 		; Tile na ekran	
-		ld	a,(ix+2)		
+	;	ld	a,(ix+2)		
 		call	gotoyx
 		call	pchar
 
@@ -166,10 +166,10 @@ field_of_view:
 	printout:
 		pop	bc
 		djnz	.printloop			
-		ld	hl,(iterator)
-		ld	(hl),DELIM
+	;	ld	hl,(iterator)
+	;	ld	(hl),DELIM
 		; wlacza "widzialnosc" okna 3D
-	;	set_color BLACK_BGD OR GREEN, ATR_3D_TOP, 8
+;		set_color BLACK_BGD OR YELLOW, ATR_3D_TOP, 8
 		atrbuf_2_atr
 		ret
 
@@ -208,33 +208,33 @@ is_visible:
 		jp	vsbl	
 
 ;=============
-prev_fov:
+;prev_fov:
 ;=============
-		ld	b,18			; 16 przebiegow + DELIM
-		ld	ix,prev_fov_list
-.pfovloop:	push	bc
-		ld	a,(ix)
-		cp	DELIM
-		jr	nz,prtbl
-		pop	bc
-		jr	out4
-	prtbl:	ld	b,a
-		ld	c,(ix+1)
-		call	gotoyx
-		ld	b,FLOOR_CHAR
-		ld	a,(ix+2)
-		cp	WALL_CHAR		; jesli nie sciana
-		jr	nz,prtspc		; drukuje spacje 
-		ld	b,PREV_WALL
-	prtspc:
-		ld	a,b
-		call	pchar	
-		inc	ix
-		inc	ix
-		inc	ix	
-		pop	bc
-		djnz	.pfovloop
-	out4:	ret
+;		ld	b,18			; 16 przebiegow + DELIM
+;		ld	ix,prev_fov_list
+;.pfovloop:	push	bc
+;		ld	a,(ix)
+;		cp	DELIM
+;		jr	nz,prtbl
+;		pop	bc
+;		jr	out4
+;	prtbl:	ld	b,a
+;		ld	c,(ix+1)
+;		call	gotoyx
+;		ld	b,FLOOR_CHAR
+;		ld	a,(ix+2)
+;		cp	WALL_CHAR		; jesli nie sciana
+;		jr	nz,prtspc		; drukuje spacje 
+;		ld	b,PREV_WALL
+;	prtspc:
+;		ld	a,b
+;		call	pchar	
+;		inc	ix
+;		inc	ix
+;		inc	ix	
+;		pop	bc
+;		djnz	.pfovloop
+;	out4:	ret
 
 ; -------------------------------------------------------
 ; Oblicza i wypelnia wynikami tabele offsetow

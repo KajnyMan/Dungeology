@@ -13,14 +13,6 @@ clear_lines	MACRO	_end_of_area, _lines
 		djnz	clear_block	
 		ld	sp,hl			; restore SP
 		ENDM
-
-hide_cursor	MACRO
-
-		ENDM
-
-show_cursor	MACRO
-
-		ENDM
 ; =======================
 clear_txtline	MACRO _txtline
 		LOCAL	clear_block
@@ -47,10 +39,12 @@ border_color	MACRO	_color
 ; =======================
 set_color	MACRO _paper_ink, _adress, _rows
 		LOCAL	colour_block
-		ld	a,_paper_ink
-		ld	d,a
-		ld	e,a
-	;	ld de, _paper_ink * 256 + _paper_ink
+;		ld	a,_paper_ink
+;		ld	d,a
+;		ld	e,a
+;		ld	d,_paper_ink
+;		ld	e,_paper_ink
+		ld de, _paper_ink * 256 + _paper_ink
 		ld	hl,0000h
 		add	hl,sp			; save SP
 		ld	sp,_adress

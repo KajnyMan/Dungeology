@@ -83,8 +83,8 @@ setatr:
 		ret	
 
 ; ==================================================================
-; IN:	DE - adres gdzie ma pojawic sie string
-;	BC - adres stringa:o wyswietlenia 
+; IN:	DE - adres gdzie ma pojawic sie tile
+;		BC - adres pierwszego tile do wyswietlenia 
 ; ==================================================================	
 print_tile_line:
 		ld	a,(bc)
@@ -101,20 +101,26 @@ print_tile_line:
 		ld	a,TILES_MSB	
 		add	a,h	
 		ld	h,a
-		push	de
+;		push	de
 	REPT	8		
 		ld	a,(hl)
 		ld	(de),a
 		inc	hl
 		inc	d
 	ENDM
-		pop	de
+		ld	a,d
+		sub	8
+		ld	d,a
+;		pop	de
 		inc	de
 		inc	bc
 		jr	print_tile_line	
 ptile_out:
 		ret
-;========
+; ==================================================================
+; IN:	DE - adres gdzie ma pojawic sie string
+;		BC - adres stringa do wyswietlenia 
+; ==================================================================	
 pstring:
 		ld	a,(bc)
 		cp	STRING_DELIM
@@ -127,6 +133,43 @@ pstring:
 		jr	pstring
 pstring_out:
 		ret
+
+; ==================================================================
+;	Zeruje 9-cio kolumnowe linie do wyczyszczenia 
+;	IN:	HL	-  adres pierwszej lini do czyszczenia
+;	B	_	liczba lini do wyczyszczenia 
+; ==================================================================
+clear_txtlines:
+		ld	d,h
+		ld	e,l			; SAVE HL
+
+	txtline_down:
+		xor	a
+		ld	c,8
+	line_down:
+	REPT	FOV_WIDTH
+		ld	(hl),a
+		inc	l
+	ENDM
+		ld	l,e			; RESTORE L
+		inc	h
+		dec	c
+	jp	nz,line_down
+		ld	h,d			; RESTORE H
+		ld	a,l
+		add	a,SCREEN_WIDTH
+		ld	l,a
+		ld	e,l
+		jr	nc,same_third	
+		ld	a,h
+		add	a,$08
+		ld	h,a
+		ld	d,h
+	same_third:
+		dec	b
+		jp	nz,txtline_down
+		ret
+		
 ; ==================================================================
 ; Przyjmuje y,x ekranu, a zwraca adres w pamieci atrybutow ekranu 
 ; IN:
@@ -169,3 +212,45 @@ pstring_out:
 ;		ld	(hl),a
 ;		exx
 ;		ret
+; ==========================================
+; Druguje ramke okna
+; IN:	BC - Y, X lewego gornego rogu ramki
+; ==========================================
+print_frames:
+		ld	bc,FOV_FRAME_YX
+		ld	hl,fov_frame_indexes				
+		ld	a,(hl)
+		inc	hl
+		ex	af,af'
+		ld	a,(hl)
+		ex	af,af'					; kolor przygotowany
+		inc	hl	
+	go_down:
+		push	bc
+		push	af
+		call	gotoyx			
+		; w DE adres
+		
+		ld	b,h
+		ld	c,l
+		call	print_tile_line
+		; BC na $FF lini
+		pop		af
+		pop		bc
+		ld	h,b
+		ld	l,c
+		inc	b
+		dec	a
+		jr	nz, go_down	
+		
+		
+		
+		
+
+			
+		
+fov_frame_indexes
+	db	76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
+	db	81, $FF, 81, $FF, 82, $FF, 82, $FF
+	db	83, $FF, 83, $FF, 84, $FF, 84, $FF
+	db	76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
