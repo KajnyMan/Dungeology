@@ -1,4 +1,11 @@
-
+MUL8_A_HL	MACRO
+		ld	h,0
+		ld	l,a
+		add	hl,hl
+		add	hl,hl
+		add	hl,hl
+		ENDM
+		
 clear_lines	MACRO	_end_of_area, _lines
 		LOCAL	clear_block
 		ld	de,0000h		
@@ -39,11 +46,6 @@ border_color	MACRO	_color
 ; =======================
 set_color	MACRO _paper_ink, _adress, _rows
 		LOCAL	colour_block
-;		ld	a,_paper_ink
-;		ld	d,a
-;		ld	e,a
-;		ld	d,_paper_ink
-;		ld	e,_paper_ink
 		ld de, _paper_ink * 256 + _paper_ink
 		ld	hl,0000h
 		add	hl,sp			; save SP
@@ -57,13 +59,44 @@ set_color	MACRO _paper_ink, _adress, _rows
 		ld	sp,hl			; restore SP
 		ENDM
 
-; ======================
-set_hero_m	MACRO _paper_ink
-		IF NUL _paper_ink
-		ELSE
+; =================
+; IN:	Y,X w DE
+; =================
+SET_ATR_LINE	MACRO _paper_ink, _col
+		ld	a,d
+		add	a,a
+		add	a,a
+		add	a,a
+		ld	l,a
+		ld	h,0
+		add	hl,hl
+		add hl,hl
+		ld	a,e
+		add	a,l
+		ld	l,a
+		ld	a,ATR_MSB	
+		add	a,h
+		ld	h,a
 		ld	a,_paper_ink
-		ENDIF
-		ld	(hero_m),a
+	IF	NUL _col
+		ld	(hl),a
+		inc	l
+	ELSE
+		REPT	_col
+			ld	(hl),a
+			inc	l
+		ENDM
+	ENDIF
+		ENDM
+			
+; =========================
+SET_ATR_BLOCK	MACRO _paper_ink, _col, _lines
+		LOCAL	_next_ln
+		ld	b,_lines
+	_next_ln:
+		set_atr _paper_ink, _col
+		inc	d
+		djnz	_next_ln
 		ENDM
 ; =========================
 ; IN : DE - adres Tile na ekranie, A'- atrybut

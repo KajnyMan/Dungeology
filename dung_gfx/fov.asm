@@ -137,25 +137,16 @@ field_of_view:
 		
 		ld	b,(ix)			; Y
 		ld	c,(ix+1)		; X	
-		; Kopia Y i X tile do prev_fov_list
-	;	ld	hl,(iterator)
-	;	ld	(hl),b
-	;	inc	hl
-	;	ld	(hl),c
-	;	inc	hl
-		ld	a,(ix+2)		; Tile char
-		push	af			; Save Tile.char
-	;	ld	(hl),a
-	;	inc	hl
-	;	ld	(iterator),hl
 		
 		; Tile na ekran	
-	;	ld	a,(ix+2)		
 		call	gotoyx
+
+		ld	a,(ix+2)			; Tile char
+		ld	b,a					; Save Tile char
 		call	pchar
 
 		; Print 3D
-		pop	af			; Restore Tile.char
+		ld	a,b					; Restore Tile.char
 		cp	WALL_CHAR
 		jp	z,printwall_3d		; Sprite na ekran
 		cp	C_DOOR
@@ -166,11 +157,7 @@ field_of_view:
 	printout:
 		pop	bc
 		djnz	.printloop			
-	;	ld	hl,(iterator)
-	;	ld	(hl),DELIM
-		; wlacza "widzialnosc" okna 3D
-;		set_color BLACK_BGD OR YELLOW, ATR_3D_TOP, 8
-		atrbuf_2_atr
+;		atrbuf_2_atr
 		ret
 
 ;-----------------------------------

@@ -2,6 +2,16 @@
 ; 	D U N G E O L O G Y - zx spectrum
 ;-------------------------------------------;
 
+
+; rozmieszczenie elementow ekranu ( od tego liczona jest reszta )
+FOV_Y			equ 2
+FOV_X			equ 11
+MSG_Y			equ	11
+MSG_X			equ	4
+W3D_Y			equ	17
+W3D_X			equ	11
+
+; atrybuty
 BLACK			equ	0
 BLUE			equ	1
 RED				equ	2
@@ -37,19 +47,33 @@ Space_B			equ	$7F
 	; mapa i hero
 MAP_HEIGHT		equ	12
 MAP_WIDTH		equ	32
-FOV_Y			equ 1
-FOV_X			equ 10
 FOV_YX			equ	( FOV_Y * 256 ) + FOV_X 
 FOV_WIDTH		equ 9
 FOV_HEIGHT		equ 9
 FOV_FRAME_Y		equ	FOV_Y - 1	
 FOV_FRAME_X		equ	FOV_X - 1	
 FOV_FRAME_YX	equ	( FOV_FRAME_Y * 256 ) + FOV_FRAME_X	
+FOV_FRAME_H		equ	FOV_HEIGHT + 2		
+FOV_FRAME_W		equ	FOV_WIDTH + 2		
+FFY				equ	FOV_FRAME_Y
+FFX				equ	FOV_FRAME_X
+FFW				equ	FOV_WIDTH + 1
+FFH				equ FOV_HEIGHT + 1
 W3D_HEIGHT		equ	6
 W3D_WIDTH		equ	9
-W3D_Y			equ	17
-W3D_X			equ	10
 W3D_YX			equ	( W3D_Y * 256 ) + W3D_X 
+W3D_FRAME_Y		equ	W3D_Y - 1	
+W3D_FRAME_X		equ	W3D_X - 1	
+W3D_FRAME_YX	equ	( W3D_FRAME_Y * 256 ) + W3D_FRAME_X	
+W3D_FRAME_H		equ	W3D_HEIGHT + 2		
+W3D_FRAME_W		equ	W3D_WIDTH + 2		
+F3Y				equ	W3D_FRAME_Y
+F3X				equ	W3D_FRAME_X
+F3W				equ	W3D_WIDTH + 1
+F3H				equ W3D_HEIGHT + 1
+MSG_YX			equ	( MSG_Y * 256 ) + MSG_X
+MSG_WIDTH		equ 24
+MSG_HEIGHT		equ 5
 WALL_CHAR		equ	'#'
 PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
@@ -62,6 +86,7 @@ DELIM			equ	0FFh
 OBJ_MAX			equ	32
 HERO_Y			equ	FOV_Y + 4
 HERO_X			equ FOV_X + 4 	
+HERO_ATR		equ BLACK_BGD OR YELLOW
 ;HERO_YX			equ $0505
 HERO_YX			equ ( HERO_Y * 256 ) + HERO_X 
 
@@ -77,7 +102,8 @@ SCREEN_TOP		equ	$5800
 SCREEN_ATR		equ	$5800
 ATR3			equ	$5A00
 MSG_AREA		equ $4888	; linie 96-127
-MSG_LINE		equ	$48C0
+MSG_LINE1		equ	$48A0
+MSG_LINE2		equ	$48C0
 SCR3			equ	$5000
 ATR_MAP_TOP		equ	$5980
 ATR_MSG_TOP 	equ	$5A00
@@ -86,6 +112,7 @@ FONTS_MSB		equ $3D
 SCR1_MSB		equ $40
 SCR2_MSB		equ $48
 SCR3_MSB		equ $50
+ATR_MSB			equ	$58
 	; adresy ruchome
 ;FOV_ADR			equ	$4021
 FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
@@ -106,18 +133,38 @@ TILES_MSB		equ $F8
 		clear_lines SCREEN_TOP, 191
 		border_color BLACK
 	
-;		call	print_frames
-			
-		; "wygaszone" okno 3D przy rysowaniu
-		set_color BLACK_BGD OR BLACK, ATR_3D_TOP, 8	
-		; kolory okna powiadomien
-		set_color BLACK_BGD OR YELLOW, ATR_MSG_TOP, 4
-		; kolory okna mapy
-		set_color BLACK_BGD OR RED, ATR_MAP_TOP, 12
-		; domyslnie w pamieci Hero atrybut ustawiony w set_color
-		set_hero_m
+		set_color	BLACK_BGD OR BLACK, ATR_3D_TOP, 24
+		call	print_frames
 
-	
+		; kolory okna powiadomien
+		ld	a,BLACK_BGD OR YELLOW 
+		ld	b,MSG_HEIGHT
+		ld	c,MSG_WIDTH
+		ld	de,MSG_YX
+		call set_atr_block
+
+		; kolory ramki mapy
+		ld	a,BLACK_BGD OR GREEN 
+		ld	b,FOV_FRAME_H
+		ld	c,FOV_FRAME_W
+		ld	de,FOV_FRAME_YX
+		call set_atr_block
+
+		; kolory ramki	3D 
+		ld	a,BLACK_BGD OR PURPLE 
+		ld	b,W3D_FRAME_H
+		ld	c,W3D_FRAME_W
+		ld	de,W3D_FRAME_YX
+		call set_atr_block
+
+		; kolory okna mapy
+		ld	a,BLACK_BGD OR RED 
+		ld	b,FOV_HEIGHT
+		ld	c,FOV_WIDTH
+		ld	de,FOV_YX
+		call set_atr_block
+		
+
 ; ------ Czyta mape i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
 		ld	ix,doors
 		ld	iy,passages
@@ -162,8 +209,8 @@ next_mapchar:
 		jr	nz,next_mapchar
 
 		; Hero kolor ---------
-		ld	a,BLACK_BGD OR PURPLE OR BRIGHT
-		ld	(hero_a),a
+;		ld	a,BLACK_BGD OR PURPLE OR BRIGHT
+;		ld	(hero_a),a
 ; Na podstawie Y,X oblicza offset hero wzgledem poczatku MAP'y
 		ld	a,(hero_mapY)
 		ld	c,a
@@ -210,45 +257,60 @@ next_mapchar:
 		
 ; ===============  M A I N    L O O P =================
 
-		jp	begin
+;		jp	begin
 
 refresh:
-		; czyszczenie okna 3d
-		ld	hl,W3D_ADR
-		ld	b,W3D_HEIGHT
-		call	clear_txtlines
-;		clear_lines	SCREEN_TOP, 64
-
 		; czyszczenie okna fov
 		ld	hl,FOV_ADR	
 		ld	b,FOV_HEIGHT
 		call	clear_txtlines
 
+		; czyszczenie okna 3d
+		ld	hl,W3D_ADR
+		ld	b,W3D_HEIGHT
+		call	clear_txtlines
+begin:
 		; "wygaszone" okno 3D przy rysowaniu
-		set_color BLACK_BGD OR BLACK, ATR_3D_TOP, 8
-		set_color BLACK_BGD OR BLACK, ATR_BUF_TOP, 8
+		ld	a,BLACK_BGD OR BLUE OR BRIGHT
+		ld	b,W3D_HEIGHT
+		ld	c,W3D_WIDTH
+		ld	de, W3D_YX
+		call set_atr_block
+
+;		set_color BLACK_BGD OR BLACK, ATR_BUF_TOP, 8
 
 		; -----------------------
 		; Pole widzenia na ekran
 		; -----------------------
-begin:		call	field_of_view		; fov.z80
+		call	field_of_view		; fov.z80
+
+		; -----------------------
+		;  "widzialnosc" okna 3D
+		; -----------------------
+		ld	a,BLACK_BGD OR BLUE OR BRIGHT
+		ld	b,W3D_HEIGHT
+		ld	c,W3D_WIDTH
+		ld	de, W3D_YX
+		call set_atr_block
 		
 		; --------------	
 		; Hero na ekran	
 		; --------------
-		ld	hl,hero_i	; ikona hero
-		ld	a,(hero_d)	; w zaleznosci
-		ld	b,0		; od kierunku
-		ld	c,a		; i zwrotu
-		add	hl,bc		; ^ > v <
+		ld	hl,hero_i		; ikona hero
+		ld	a,(hero_d)		; w zaleznosci
+		ld	b,0				; od kierunku
+		ld	c,a				; i zwrotu
+		add	hl,bc			; ^ > v <
 		ld	a,(hl)
-		ld	bc,HERO_YX		;stala pozycja HERO na ekranie
-		push	bc
+		ld	bc,HERO_YX		; stala pozycja HERO na ekranie
+		push	af
 		call	gotoyx
+		pop		af
 		call	pchar
-		ld	a,(hero_a)
-		pop	bc		; RESTORE Y,X
-		call	setatr	
+		
+		ld	a, HERO_ATR
+		ld	de,HERO_YX
+		call	set_atr
 
 wait_release:
 		call	scan_keyboard	
@@ -316,8 +378,9 @@ message_area_clear:
 ;		ld	de,MSG_LINE + $A
 ;		ld	bc,msg_clear
 ;		call	pstring	
-
-		clear_txtline	MSG_LINE	
+		
+		clear_txtline	MSG_LINE1	
+		clear_txtline	MSG_LINE2	
 
 		xor	a
 		ld	(message_flag),a
@@ -339,16 +402,6 @@ ismove:		call	right_before
 ;-------------------------------------------------
 move:
 		ld	(hero_o),de	; Hero new offset
-		
-;		ld	bc,(hero_mapX)
-;		call	gotoyx
-
-;		ld	a,(hero_m)
-;		call	setatr
-
-;		ld	a,FLOOR_CHAR
-;		call	pchar
-
 		ld	hl,hero_s	; /
 		ld	a,(hero_d)	; Przesuniecie kursora
 		add	a,a		; do nowej pozycji
@@ -393,6 +446,9 @@ right_before:
 search:
 		ld	a,1
 		ld	(message_flag),a		; trzeba bedzie wyczyscic powiadomienia
+		ld	de,MSG_LINE1 + $A 
+		ld	bc,msg_searching
+		call	pstring
 		call 	right_before
 
 		; ukryte przejscie ?
@@ -406,12 +462,12 @@ search:
 		cp	0FFh					; a moze nic tu nie ma?
 		jp	z,nothing_here	
 		ld	(hl),FLOOR_CHAR			; jesli przejcie to zburz mur
-		ld	de,MSG_LINE + $9
+		ld	de,MSG_LINE2 + $9
 		ld	bc,msg_psgfinded
 		call	pstring
 		jp	refresh	
 	nothing_here:
-		ld	de,MSG_LINE + $6
+		ld	de,MSG_LINE2 + $6
 		ld	bc,msg_nothing
 		call	pstring
 		jp	key_press
@@ -484,7 +540,7 @@ hero_d		db	1						; zwrot : 0 - N, 1 - E itd
 hero_o		ds	2						; 16-bit offset wzgl .MAP
 hero_i		db	'^','>','v','<'			; ikony Hero
 hero_a		db	0						; kolory ( atrybut )
-hero_m		db	0						; pamiec atrybutu
+;hero_m		db	0						; pamiec atrybutu
 ;hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
