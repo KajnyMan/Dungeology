@@ -1,15 +1,15 @@
 printwall_3d:	
 		ld	hl,wall_sprites
-		ld	d,WALL3D_ATR
+;		ld	d,WALL3D_ATR
 		jr	common
 
 print_c_door_3d:	
 		ld	hl,c_door_sprites
-		ld	d,C_DOOR3D_ATR
+;		ld	d,C_DOOR3D_ATR
 		jr	common
 print_o_door_3d:	
 		ld	hl,o_door_sprites
-		ld	d,O_DOOR3D_ATR
+;		ld	d,O_DOOR3D_ATR
 
 	common:
 		ex	af,af'
@@ -82,13 +82,12 @@ roomlabel:
 		jr	.loop1	
 		ret
 	finded:	ld	a,b	
-		ld	(door_before),a		; nr drzwi do zmiennej
+;		ld	(door_before),a		; nr drzwi do zmiennej
 		call	h2asci			; zamiana na ascii do druku
-		push	ix
-		ld	ix,d04
-		ld	(ix+12),c
-		ld	(ix+13),b
-		pop	ix
+		ld	hl,msg_door_nr
+		ld	(hl),c
+		inc	hl
+		ld	(hl),b
 		ret
 		
 space_string	ds	24,' '

@@ -41,24 +41,12 @@ field_of_view:
 		ld	hl,(coords_pointer)
 		; Y
 		ld	e,(hl)			; offset Y tile
-;		ld	a,(hero_mapY)
-;		add	a,e			; dodatnie mapY Hero
-;		cp	(iy)			; jesli Y tile
-;		jr	c,out1			; poza rozmiarem mapy to
-;		cp	(iy+1)		; konczymy ten przebieg 
-;		jr	nc,out1
 	ld	a,HERO_Y
 	add	a,e
 		ld	(ix),a			; do Y tile i zapis do fov_list
 		inc	hl
 		; X
 		ld	d,(hl)			; offset X tile
-;		ld	a,(hero_mapX)
-;		add	a,d			; dodatnie X Hero
-;		cp	(iy+2)		; jesli X tile
-;		jr	c,out2			; poza rozmiarem mapy to				
-;		cp	(iy+3)		; konczymy ten przebieg 
-;		jr	nc,out2
 	ld	a,HERO_X
 	add	a,d
 		ld	(ix+1),a		; do X tile i zapis do fov_list
@@ -75,16 +63,6 @@ field_of_view:
 		add	hl,de			; i odczytanie z MAPy char 
 		ld	a,(hl)			; Tile i zapisanie tego
 		ld	(ix+2),a		; char (Tile) na liscie fov
-
-	; Jezeli przed Hero sa Zamkniete Drzwi to funkja roomlabel wyszukuje je
-	; na mapie i wbije odpowiedni nr drzwi w sprit'a 3D, ktory bedzie
-	; pozniej wydrukowany.
-		cp	C_DOOR		; Jesli Zamkniete drzwi
-		jr	nz,shift
-		ld	a,b
-		cp	4			; przed Hero
-		jr	nz,shift
-	;	call	roomlabel		; to wbij nr drzwi w sprite'a 3D
 
 	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
 	; i wskaznika listy FOV
@@ -157,7 +135,6 @@ field_of_view:
 	printout:
 		pop	bc
 		djnz	.printloop			
-;		atrbuf_2_atr
 		ret
 
 ;-----------------------------------
@@ -193,35 +170,6 @@ is_visible:
 		inc	hl
 		djnz	three	
 		jp	vsbl	
-
-;=============
-;prev_fov:
-;=============
-;		ld	b,18			; 16 przebiegow + DELIM
-;		ld	ix,prev_fov_list
-;.pfovloop:	push	bc
-;		ld	a,(ix)
-;		cp	DELIM
-;		jr	nz,prtbl
-;		pop	bc
-;		jr	out4
-;	prtbl:	ld	b,a
-;		ld	c,(ix+1)
-;		call	gotoyx
-;		ld	b,FLOOR_CHAR
-;		ld	a,(ix+2)
-;		cp	WALL_CHAR		; jesli nie sciana
-;		jr	nz,prtspc		; drukuje spacje 
-;		ld	b,PREV_WALL
-;	prtspc:
-;		ld	a,b
-;		call	pchar	
-;		inc	ix
-;		inc	ix
-;		inc	ix	
-;		pop	bc
-;		djnz	.pfovloop
-;	out4:	ret
 
 ; -------------------------------------------------------
 ; Oblicza i wypelnia wynikami tabele offsetow

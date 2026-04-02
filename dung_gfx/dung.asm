@@ -6,7 +6,7 @@
 ; rozmieszczenie elementow ekranu ( od tego liczona jest reszta )
 FOV_Y			equ 2
 FOV_X			equ 11
-MSG_Y			equ	11
+MSG_Y			equ	12
 MSG_X			equ	4
 W3D_Y			equ	17
 W3D_X			equ	11
@@ -31,8 +31,8 @@ WHITE_BGD		equ	56
 BRIGHT			equ	64
 FLASH			equ	128
 WALL3D_ATR		equ BLACK_BGD OR BLUE OR BRIGHT
-C_DOOR3D_ATR	equ	BLACK_BGD OR BLUE OR BRIGHT 
-O_DOOR3D_ATR	equ	BLACK_BGD OR BLUE OR BRIGHT
+C_DOOR3D_ATR	equ	BLACK_BGD OR RED
+O_DOOR3D_ATR	equ	BLACK_BGD OR RED
 SCREEN_WIDTH	equ	32
 
 	; klawiatura
@@ -73,7 +73,7 @@ F3W				equ	W3D_WIDTH + 1
 F3H				equ W3D_HEIGHT + 1
 MSG_YX			equ	( MSG_Y * 256 ) + MSG_X
 MSG_WIDTH		equ 24
-MSG_HEIGHT		equ 5
+MSG_HEIGHT		equ 4
 WALL_CHAR		equ	'#'
 PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
@@ -113,6 +113,9 @@ SCR1_MSB		equ $40
 SCR2_MSB		equ $48
 SCR3_MSB		equ $50
 ATR_MSB			equ	$58
+ATR1_MSB		equ	$58
+ATR2_MSB		equ	$59
+ATR3_MSB		equ	$5A
 	; adresy ruchome
 ;FOV_ADR			equ	$4021
 FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
@@ -130,10 +133,10 @@ TILES_MSB		equ $F8
 		di
 		
 ;============== D A T A     I N I T ===================
-		clear_lines SCREEN_TOP, 191
 		border_color BLACK
-	
 		set_color	BLACK_BGD OR BLACK, ATR_3D_TOP, 24
+
+		clear_lines SCREEN_TOP, 191
 		call	print_frames
 
 		; kolory okna powiadomien
@@ -150,7 +153,7 @@ TILES_MSB		equ $F8
 		ld	de,FOV_FRAME_YX
 		call set_atr_block
 
-		; kolory ramki	3D 
+;		; kolory ramki	3D 
 		ld	a,BLACK_BGD OR PURPLE 
 		ld	b,W3D_FRAME_H
 		ld	c,W3D_FRAME_W
@@ -164,7 +167,6 @@ TILES_MSB		equ $F8
 		ld	de,FOV_YX
 		call set_atr_block
 		
-
 ; ------ Czyta mape i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
 		ld	ix,doors
 		ld	iy,passages
@@ -208,9 +210,6 @@ next_mapchar:
 		or	c
 		jr	nz,next_mapchar
 
-		; Hero kolor ---------
-;		ld	a,BLACK_BGD OR PURPLE OR BRIGHT
-;		ld	(hero_a),a
 ; Na podstawie Y,X oblicza offset hero wzgledem poczatku MAP'y
 		ld	a,(hero_mapY)
 		ld	c,a
@@ -223,23 +222,6 @@ next_mapchar:
 		add	hl,de	
 		ld	(hero_o),hl
 
-
-; Oblicza granice widzialnosci Tiles
-;		ld	ix,borders
-;		; Y min
-;		ld	a,(map_position)	
-;		ld	(ix),a
-;		; Y max
-;		ld	hl,map_height
-;		add	a,(hl)
-;		ld	(ix+1),a
-;		; X min
-;		ld	a,(map_position + 1)
-;		ld	(ix+2),a
-;		; X max 
-;		inc	hl			; map_width
-;		add	a,(hl)
-;		ld	(ix+3),a
 
 ; Oblicza i wypelnia tabele neighbor_offs
 		ld	ix,neighbor_offs
@@ -257,7 +239,7 @@ next_mapchar:
 		
 ; ===============  M A I N    L O O P =================
 
-;		jp	begin
+		jp	begin
 
 refresh:
 		; czyszczenie okna fov
@@ -271,13 +253,11 @@ refresh:
 		call	clear_txtlines
 begin:
 		; "wygaszone" okno 3D przy rysowaniu
-		ld	a,BLACK_BGD OR BLUE OR BRIGHT
+		ld	a,BLACK_BGD OR BLACK
 		ld	b,W3D_HEIGHT
 		ld	c,W3D_WIDTH
 		ld	de, W3D_YX
 		call set_atr_block
-
-;		set_color BLACK_BGD OR BLACK, ATR_BUF_TOP, 8
 
 		; -----------------------
 		; Pole widzenia na ekran
@@ -292,6 +272,7 @@ begin:
 		ld	c,W3D_WIDTH
 		ld	de, W3D_YX
 		call set_atr_block
+;		atrbuf_2_atr
 		
 		; --------------	
 		; Hero na ekran	
@@ -303,9 +284,11 @@ begin:
 		add	hl,bc			; ^ > v <
 		ld	a,(hl)
 		ld	bc,HERO_YX		; stala pozycja HERO na ekranie
-		push	af
+
+		ld	h,a				; SAVE char
 		call	gotoyx
-		pop		af
+		ld	a,h				; RESTORE char
+
 		call	pchar
 		
 		ld	a, HERO_ATR
@@ -364,8 +347,13 @@ move_door:
 		jp	key_press	; nie ma tutaj drzwi! Wypad
 open_door:
 		ld	(hl),O_DOOR	
-		jp	refresh
+		jr	p_msg
 close_door:	ld	(hl),C_DOOR
+	p_msg:
+		call	roomlabel
+		ld	de,MSG_LINE1 + $A
+		ld	bc,msg_door
+		call	pstring
 		jp	refresh
 
 ; ---------------------------------------------------------------
@@ -375,10 +363,6 @@ message_area_clear:
 		ld	a,(message_flag)
 		or	a
 		ret	z	
-;		ld	de,MSG_LINE + $A
-;		ld	bc,msg_clear
-;		call	pstring	
-		
 		clear_txtline	MSG_LINE1	
 		clear_txtline	MSG_LINE2	
 
@@ -387,7 +371,8 @@ message_area_clear:
 		ret
 		
 ; Sprawdza czy ruch jest mozliwy
-ismove:		call	right_before
+ismove:	
+		call	right_before
 		cp	WALL_CHAR
 		jp	z,key_press
 		cp	C_DOOR
@@ -444,9 +429,7 @@ right_before:
 ; Szuka ukrytych przejsc, przedmiotow itp.
 ;--------------------------------------------
 search:
-		ld	a,1
-		ld	(message_flag),a		; trzeba bedzie wyczyscic powiadomienia
-		ld	de,MSG_LINE1 + $A 
+		ld	de,MSG_LINE1 + $9 
 		ld	bc,msg_searching
 		call	pstring
 		call 	right_before
@@ -462,7 +445,7 @@ search:
 		cp	0FFh					; a moze nic tu nie ma?
 		jp	z,nothing_here	
 		ld	(hl),FLOOR_CHAR			; jesli przejcie to zburz mur
-		ld	de,MSG_LINE2 + $9
+		ld	de,MSG_LINE2 + $8
 		ld	bc,msg_psgfinded
 		call	pstring
 		jp	refresh	
@@ -547,7 +530,7 @@ neighbor_offs:	db	0,1,0,-1
 ;------ doors ---------
 doors		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)
 passages	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
-door_before	db	0				; numer drzwi na ktore patrzy Hero
+;door_before	db	0				; numer drzwi na ktore patrzy Hero
 ;- tabela adresow poczatkow lini 'tekstowych' -----
 
 		include	messages.asm

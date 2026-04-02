@@ -54,13 +54,15 @@ mul8:		push	bc
 ;-----------------------------
 h2asci:
 		ld	c,0
-loop2:		ld	b,a
+	loop2:	
+		ld	b,a
 		cp	10
 		jr	c,fine	;jesli a<10 koniec
 		inc	c
 		sub	10
 		jr	loop2
-fine:		add	a,'0'
+	fine:
+		add	a,'0'
 		ld	b,a
 		ld	a,c
 		add	a,'0'

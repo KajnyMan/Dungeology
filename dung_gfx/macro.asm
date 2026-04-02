@@ -1,10 +1,11 @@
-MUL8_A_HL	MACRO
+MUL_Ax8_TO_HL	MACRO
 		ld	h,0
 		ld	l,a
 		add	hl,hl
 		add	hl,hl
 		add	hl,hl
 		ENDM
+; ========================
 		
 clear_lines	MACRO	_end_of_area, _lines
 		LOCAL	clear_block
@@ -108,6 +109,27 @@ print_attribute_2buffer	MACRO
 		ex	af,af'
 		ENDM
 ; ========================
+PRINT_ATR	MACRO
+		ld	a,d
+		cp	$48
+		jr	z,t2
+		jr	nc,t3
+		ld	h,ATR1_MSB
+		jr	cmn
+	t2
+		ld	h,ATR2_MSB
+		jr	cmn
+	t3: 
+		ld	h,ATR3_BUF_MSB
+	cmn:
+		ld	l,e
+		ex	af,af'
+		ld	(hl),a
+		ex	af,af'
+		ENDM
+; =========================
+
+
 atrbuf_2_atr	MACRO
 		ld	de,ATR3
 		ld	hl,ATR3_BUF

@@ -61,8 +61,10 @@ print_tile_line:
 
 	;	print_attribute_2buffer
 
-		MUL8_A_HL
-
+		MUL_Ax8_TO_HL
+;	push	hl
+;		PRINT_ATR
+;	pop		hl
 		ld	a,TILES_MSB	
 		add	a,h	
 		ld	h,a
@@ -85,6 +87,9 @@ ptile_out:
 ;		BC - adres stringa do wyswietlenia 
 ; ==================================================================	
 pstring:
+		ld	a,1
+		ld	(message_flag),a		; trzeba bedzie wyczyscic powiadomienia
+pstring_global:		
 		ld	a,(bc)
 		cp	STRING_DELIM
 		jp	z,pstring_out
@@ -92,7 +97,7 @@ pstring:
 		call	pchar
 		pop	de
 		inc	de
-			inc	bc
+		inc	bc
 		jr	pstring
 pstring_out:
 		ret
@@ -180,8 +185,9 @@ set_atr_line
 		ld	a,ATR_MSB	
 		add	a,h
 		ld	h,a
-	pop		af		
+	ld	a,b
 		ld	b,c
+	pop		af		
 	nxt_col:	
 		ld	(hl),a
 		inc	l
@@ -262,6 +268,11 @@ print_frames:
 		inc	hl
 		ld	b,h
 		ld	c,l
+		
+		ex	af,af'
+		ld	a,BLACK_BGD OR GREEN 
+		ex	af,af'
+
 		call	print_tile_line
 		; BC - iterator na $FF (eol)
 		ld	h,b
