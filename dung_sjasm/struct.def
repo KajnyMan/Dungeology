@@ -1,0 +1,12 @@
+	STRUCT	Player
+mapY			BYTE
+mapX			BYTE
+direction		BYTE
+;attribute		BYTE	
+offset			WORD
+	ENDS
+; ----
+	STRUCT	Inventory
+keys			WORD
+
+	ENDS

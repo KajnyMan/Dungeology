@@ -8,34 +8,32 @@ MUL_Ax8_TO_HL	MACRO
 ; ========================
 		
 CLEAR_LINES	MACRO	_end_of_area, _lines
-		LOCAL	clear_block
 		ld	de,0000h		
 		ld	hl,0000h
 		add	hl,sp			; save SP
 		ld	sp,_end_of_area	; czysci od gory 
 		ld	b,_lines		; 192 = 6144 / ( 16 x 2 )
-		clear_block:
+.clear_block:
 	REPT	16				; zeruje 32 bajty na obrot
 		push	de	
-	ENDM
-		djnz	clear_block	
+	ENDR
+		djnz	.clear_block	
 		ld	sp,hl			; restore SP
 		ENDM
 ; =======================
-CLEAR_TXTLINE	MACRO _txtline
-		LOCAL	clear_block
+clear_txtline	MACRO _txtline
 		ld	hl,_txtline
 		ld	e,l
 		ld	b,8
 		xor	a
-		clear_block:
+.clear_block:
 	REPT	32
 		ld	(hl),a
 		inc	hl
-	ENDM			
+	ENDR			
 		ld	l,e
 		inc	h
-		djnz	clear_block	
+		djnz	.clear_block	
 		ENDM
 
 ; =======================
@@ -46,17 +44,16 @@ BORDER_COLOR	MACRO	_color
 	
 ; =======================
 SET_COLOR	MACRO _paper_ink, _adress, _rows
-		LOCAL	colour_block
 		ld de, _paper_ink * 256 + _paper_ink
 		ld	hl,0000h
 		add	hl,sp			; save SP
 		ld	sp,_adress
 		ld	b,_rows
-		colour_block:
+.colour_block:
 	REPT	16				; zeruje 32 bajty na obrot
 		push	de	
-	ENDM
-		djnz	colour_block	
+	ENDR
+		djnz	.colour_block	
 		ld	sp,hl			; restore SP
 		ENDM
 
@@ -86,18 +83,17 @@ SET_ATR_LINE	MACRO _paper_ink, _col
 		REPT	_col
 			ld	(hl),a
 			inc	l
-		ENDM
+		ENDR
 	ENDIF
 		ENDM
 			
 ; =========================
 SET_ATR_BLOCK	MACRO _paper_ink, _col, _lines
-		LOCAL	_next_ln
 		ld	b,_lines
-	_next_ln:
+.next_ln:
 		set_atr _paper_ink, _col
 		inc	d
-		djnz	_next_ln
+		djnz	.next_ln
 		ENDM
 ; =========================
 ; IN : DE - adres Tile na ekranie, A'- atrybut
@@ -116,12 +112,12 @@ PRINT_ATR	MACRO
 		jr	nc,t3
 		ld	h,ATR1_MSB
 		jr	cmn
-	t2
+t2:
 		ld	h,ATR2_MSB
 		jr	cmn
-	t3: 
+t3: 
 		ld	h,ATR3_BUF_MSB
-	cmn:
+cmn:
 		ld	l,e
 		ex	af,af'
 		ld	(hl),a

@@ -1,0 +1,92 @@
+; --------------------------------
+; Mnozenie dwoch liczb 8-bitowych
+; czynniki: B,C. Iloczyn: HL
+; --------------------------------
+mul8:
+		push	bc
+		push	de
+
+		ld	hl,0
+		ld	a,c
+		ld	d,0
+		ld	e,b
+		ld	b,8			; licznik bitow		
+loop:	add	hl,hl
+		rla
+		jr	nc,skip
+		add	hl,de
+skip:	djnz	loop
+
+		pop	de
+		pop	bc
+		ret		
+	
+; -----------------------------------
+; Mnozenie takich liczb aby iloczyn 
+; byl 8-bitowy. 
+; czynniki: B,C   iloczyn: A
+; -----------------------------------
+; mulproduct8:
+;		push	bc
+;		ld	a,0
+;	nxtadd:	add a,c
+;		djnz nxtadd
+;		pop	bc
+;		ret
+; Szybsza dla duzych mnoznikow ( > 8 )
+; mulproduct8:
+;		push	bc
+;
+;		ld	a,0
+;	loop1:	bit	0,b
+;		jr	z,skip2	
+;		add	a,c
+;	skip2:	sla	c
+;		srl	b
+;		jr	nz,loop1
+;		pop	bc
+;		ret
+
+
+;-----------------------------
+; Funkja zamienia liczbe w A
+; na pare cyfr ASCII w C i B 
+; np.0Fh -> C=1, B=5
+;-----------------------------
+h2asci:
+		ld	c,0
+loop2:	
+		ld	b,a
+		cp	10
+		jr	c,fine	;jesli a<10 koniec
+		inc	c
+		sub	10
+		jr	loop2
+fine:
+		add	a,'0'
+		ld	b,a
+		ld	a,c
+		add	a,'0'
+		ld	c,a
+		ret
+
+; --------------------------------------
+; Zamiana 2-cyfrowej liczby dziesietnej 
+; w formacie ASCII na liczbe 8-bit
+; input: (HL)	output: A
+; --------------------------------------
+ascii2num:
+		ld	a,(hl)			; pierwszy obrot Y	
+		and	0Fh			; minus ascii bits
+		add	a,a			; x 2	
+		ld	c,a
+		add	a,a
+		add	a,a
+		add	a,c			; x 10
+		ld	c,a			; save dziesiatki
+		inc	hl
+		ld	a,(hl)
+		and	0Fh
+		add	a,c			; dziesietne + jednoscioci
+		inc	hl
+		ret
