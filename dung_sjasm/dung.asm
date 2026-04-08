@@ -79,13 +79,13 @@ MSG_HEIGHT		equ 2
 WALL_CHAR		equ	'#'
 PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
-C_DOOR			equ	'+'
-O_DOOR			equ	'/'
+C_DOOR_CHAR		equ	'+'
+O_DOOR_CHAR		equ	'/'
 PASSAGE_CHAR	equ	'='
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
 DELIM			equ	0FFh
-OBJ_MAX			equ	32
+OBJ_MAX			equ	16
 HERO_Y			equ	FOV_Y + 4
 HERO_X			equ FOV_X + 4 	
 HERO_ATR		equ BLACK_BGD OR YELLOW
@@ -213,10 +213,10 @@ CodeStart:
 		ld	bc,MAP_HEIGHT * MAP_WIDTH	; licznik
 next_mapchar:
 		ld	a,(hl)
-		cp	C_DOOR
-		jr	z,init_door_cls
-		cp	O_DOOR
-		jr	z,init_door_opn
+		cp	C_DOOR_CHAR	
+		jr	z,init_door
+		cp	O_DOOR_CHAR	
+		jr	z,init_door
 		cp	PASSAGE_CHAR
 		jr	nz,inc_counters
 		; --- ukryte przejscia ----
@@ -228,15 +228,9 @@ next_mapchar:
 		jr	inc_counters
 		; ---	drzwi   --- 
 		; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
-init_door_cls:
-		ld	(ix+2),1	
-		jr	init_offset
-init_door_opn:
-		ld	(ix+2),0
-init_offset:
+init_door:
 		ld	(ix),e				; offset obiektu lsb
 		ld	(ix+1),d			; msb
-		inc	ix			
 		inc	ix
 		inc	ix
 		; -----------------
@@ -378,21 +372,31 @@ trn_l:
 move_door:
 		call	message_area_clear
 		call	right_before
-		cp	C_DOOR
-		jr	z,open_door
-		cp	O_DOOR
+		cp	C_DOOR_CHAR	
+		jr	z,print_door_nr
+		cp	O_DOOR_CHAR	
+		jr	z,print_door_nr
+		jp	key_press			; nie ma tutaj drzwi! Wypad
+print_door_nr:
+		push	hl				; save adresu drzwi
+		call	room_label
+		PRINT_STR	MSG_LINE1 + $A, msg_door
+		pop		hl				; restore
+		ld	a,(hl)
+		cp	O_DOOR_CHAR	
 		jr	z,close_door
-		jp	key_press	; nie ma tutaj drzwi! Wypad
+		
 open_door:
-		ld	(hl),O_DOOR	
-		jr	p_msg
-close_door:	ld	(hl),C_DOOR
-p_msg:
-		call	roomlabel
-		ld	de,MSG_LINE1 + $A
-		ld	bc,msg_door
-		call	pstring
+		call	check_key
+		jr	z,no_key
+		ld	(hl),O_DOOR_CHAR		
 		jp	refresh
+no_key:
+		PRINT_STR	MSG_LINE2 + $A, msg_nokey
+		jp	refresh	
+close_door:	ld	(hl),C_DOOR_CHAR		
+		jp	refresh
+
 
 ; ---------------------------------------------------------------
 ; Jesli bylo powiadomienie w poprzednim ruchu - trzeba wyczyscic
@@ -414,23 +418,12 @@ message_area_clear:
 		ld	(message_flag),a
 		ret
 		
-;message_area_clear:
-;		ld	a,(message_flag)
-;		or	a
-;		ret	z	
-;		clear_txtline	MSG_LINE1	
-;		clear_txtline	MSG_LINE2	
-;
-;		xor	a
-;		ld	(message_flag),a
-;		ret
-		
 ; Sprawdza czy ruch jest mozliwy
 ismove:	
 		call	right_before
 		cp	WALL_CHAR
 		jp	z,key_press
-		cp	C_DOOR
+		cp	C_DOOR_CHAR		
 		jp	z,key_press
 		call	move
 		call	message_area_clear
@@ -448,16 +441,12 @@ move:
 		ld	e,a		; Hero
 		ld	d,00h
 		add	hl,de
-;		ld	a,(hero_mapX)
 		ld	a,(hero.mapX)
 		add	a,(hl)
-;		ld	(hero_mapX),a
 		ld	(hero.mapX),a
 		inc	hl
-;		ld	a,(hero_mapY)
 		ld	a,(hero.mapX)
 		add	a,(hl)
-;		ld	(hero_mapY),a	; \____________
 		ld	(hero.mapY),a	; \____________
 		ret
 
@@ -488,56 +477,66 @@ addit:	ld	hl,(hero.offset)
 ; Szuka ukrytych przejsc, przedmiotow itp.
 ;--------------------------------------------
 search:
-		ld	de,MSG_LINE1 + $9 
-		ld	bc,msg_searching
-		call	pstring
+		PRINT_STR	MSG_LINE1 + $9, msg_searching
 		call 	right_before
 
+		push	hl					; save adres char przed Hero
+
 		; ukryte przejscie ?
-		push	hl					; save char przed Hero
 		ld	b,OBJ_MAX
 		ld	hl,passages
-		call	check_offset16
-		pop		hl					; restore
+		call	check_offset16		; w HL msb offsety znalezionego objektu
 
-		ld	a,b		
+		pop		de					; restore
+
 		cp	0FFh					; a moze nic tu nie ma?
 		jp	z,nothing_here	
-		ld	(hl),FLOOR_CHAR			; jesli przejcie to zburz mur
-		ld	de,MSG_LINE2 + $8
-		ld	bc,msg_psgfinded
-		call	pstring
-		jp	refresh	
-nothing_here:
-		ld	de,MSG_LINE2 + $8
-		ld	bc,msg_nothing
-		call	pstring
-		jp	key_press
 
+		ld	a,FLOOR_CHAR
+		ld	(de),a					; jesli przejcie to zburz mur
+		ld	(hl),0					; Zeruje ten offset na liscie
+		dec	hl						; nieodkrytych
+		ld	(hl),0					; przejsc
+		PRINT_STR	MSG_LINE2 + $8, msg_psgfinded
+		jp	refresh	
+
+nothing_here:
+		PRINT_STR	MSG_LINE2 + $8, msg_nothing
+		jp	key_press
+; --------------------------------------
+; Sprawdza czy jest klucz do tych drzwi
+; OUT: A = 0 nie ma klucza, A != 0 jest 
+; --------------------------------------
+check_key:
+		ld	a,(door_nr)
+		ld	b,a					; save nr
+		ld	de,bag.keys
+		cp	8
+		jr	c, low_flags
+		;high flags
+		inc	de
+		sub	8
+low_flags:
+		ld	a,(de)					; hl zajete wyzej
+		ld	c,a
+		ld	a,%00000001
+roll_right:
+		rrca
+		djnz	roll_right
+		and	c
+		ret
 ;------------------------------------------------
 ; Przeszukuje po offsecie liste wszystkich drzwi
 ; i drukuje nr na drzwiach przed Hero
-; w DE: offset drzwi ( wzgl. MAP )
+; IN:  DE - offset drzwi ( wzgl. MAP )
+; USED : A, BC, HL
 ;------------------------------------------------
-roomlabel:
-		ld	hl,doors	
-		ld	a,e
-		ld	b,1			; drzwi nr 1 - najnizszy offset
-.loop1:	cp	(hl)
-		inc	hl
-		jr	nz,.nxt1
-		ld	a,d
-		cp	(hl)	
-		jr	nz,.nxt2
-		jr	finded
-.nxt2:	ld	a,e
-.nxt1:	inc	hl
-		inc	hl
-		inc	b
-		jr	.loop1	
-		ret
-finded:	ld	a,b	
-;		ld	(door_before),a		; nr drzwi do zmiennej
+room_label:
+		ld	b,OBJ_MAX
+		ld	hl,doors
+		call	check_offset16
+		inc	a
+		ld	(door_nr),a
 		call	h2asci			; zamiana na ascii do druku
 		ld	hl,msg_door_nr
 		ld	(hl),c
@@ -549,7 +548,7 @@ finded:	ld	a,b
 ; szuka 16-bitowego offsetu na liscie objektow 
 ; IN:	DE - offset do wyszukania
 ; 	HL - adres listy offsetow objektow ( H - msb )
-; OUT:	B - jesli FFh = nie znaleziony offset
+; OUT:	A  - jesli FFh = nie znaleziony offset
 ;	, w przeciwnym razie index znalezionego objektu na liscie ( od 0 )
 ; USED:	A, C, HL
 ;------------------------------------------------------------------
@@ -569,15 +568,11 @@ lsb:
 msb:
 		inc	hl
 		djnz	cell	
-		ld	b,0FFh
+		ld	a,0FFh
 		ret
 _finded:	
 		ld	a,c		; restore
-		sub	b
-		ld	b,a		; index znalezionego objekty ( od 0 )
-		ld	(hl),0	; zeruje ten ofset na liscie
-		dec	hl		; nieodkrytych przejsc
-		ld	(hl),0
+		sub	b		; index znalezionego objekty ( od 0 )
 		ret	
 		
 ;------------------------	
@@ -602,7 +597,6 @@ exit:
 map_height	db	12
 map_width	db	32	
 ;---- windows ---------
-;map_position	db	 0,0	; wzgl lew-gorn rogu terminala	
 w3d_position	db	1,17	; X, Y 
 ; -------------------------------------
 borders			ds	4		; Ymin, Ymax, Xmin, Xmax 
@@ -611,11 +605,12 @@ message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
 hero		Player	{ 2, 2, 1, $00 }
 hero_i		db	'^','>','v','<'			; ikony Hero
 hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
+bag			Inventory { $1084 }
 neighbor_offs:	db	0,1,0,-1
 ;------ doors ---------
-doors		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)
-passages	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
-;door_before	db	0				; numer drzwi na ktore patrzy Hero
+doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
+passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
+door_nr		db	0				; numer drzwi na ktore patrzy Hero
 
 		include	messages.asm
 		include map.asm
@@ -623,5 +618,5 @@ passages	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
 
 End:
 
-    ; Zapisujemy drugi blok (CODE)
+    ; drugi blok (CODE) na tasme
     SAVETAP "dng.tap", CODE, "Dungeology", Start, End - Start

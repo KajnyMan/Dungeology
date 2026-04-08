@@ -95,6 +95,7 @@ SET_ATR_BLOCK	MACRO _paper_ink, _col, _lines
 		inc	d
 		djnz	.next_ln
 		ENDM
+
 ; =========================
 ; IN : DE - adres Tile na ekranie, A'- atrybut
 print_attribute_2buffer	MACRO
@@ -104,6 +105,7 @@ print_attribute_2buffer	MACRO
 		ld	(hl),a
 		ex	af,af'
 		ENDM
+
 ; ========================
 PRINT_ATR	MACRO
 		ld	a,d
@@ -123,7 +125,15 @@ cmn:
 		ld	(hl),a
 		ex	af,af'
 		ENDM
+
 ; =========================
+PRINT_STR	MACRO	_scradr, _msgadr
+		ld	de,_scradr
+		ld	bc,_msgadr
+		call	pstring
+		ENDM
+
+; ===========================
 
 
 atrbuf_2_atr	MACRO

@@ -127,9 +127,9 @@ vsbl:
 		ld	a,b					; Restore Tile.char
 		cp	WALL_CHAR
 		jp	z,printwall_3d		; Sprite na ekran
-		cp	C_DOOR
+		cp	C_DOOR_CHAR	
 		jp	z,print_c_door_3d	; Sprite na ekran
-		cp	O_DOOR
+		cp	O_DOOR_CHAR	
 		jp	z,print_o_door_3d	; Sprite na ekran
 
 printout:

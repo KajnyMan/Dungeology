@@ -1,12 +1,10 @@
 	STRUCT	Player
-mapY			BYTE
-mapX			BYTE
-direction		BYTE
-;attribute		BYTE	
-offset			WORD
+mapY			db
+mapX			db
+direction		db
+offset			dw
 	ENDS
 ; ----
 	STRUCT	Inventory
-keys			WORD
-
+keys			dw		; 2 bajtowe pole flag, klucz nr 1 - 7 bit lsb
 	ENDS
