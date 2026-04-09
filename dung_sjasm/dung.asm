@@ -81,6 +81,7 @@ PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
 C_DOOR_CHAR		equ	'+'
 O_DOOR_CHAR		equ	'/'
+KEY_CHAR		equ	'~'
 PASSAGE_CHAR	equ	'='
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
@@ -135,6 +136,7 @@ GAME_START		equ	$8400
 		
 		include	struct.def
 		include	macro.asm
+
 ; ----------------
 ;  Basic Loader
 ; ----------------
@@ -208,7 +210,7 @@ CodeStart:
 ; ------ Czyta mape i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
 		ld	ix,doors
 		ld	iy,passages
-		ld	hl,MAP
+		ld	hl,map
 		ld	de,0				; offset obiektow
 		ld	bc,MAP_HEIGHT * MAP_WIDTH	; licznik
 next_mapchar:
@@ -242,7 +244,7 @@ inc_counters:
 		or	c
 		jr	nz,next_mapchar
 
-; Na podstawie Y,X oblicza offset hero wzgledem poczatku MAP'y
+; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
 		ld	a,(hero.mapY)
 		ld	c,a
 		ld	a,(map_width)
@@ -337,17 +339,21 @@ key_press:
 
 		cp	0
 		jp	z,key_press
-		cp	1			; bit 0: I
-		jp	z,ismove
-		cp	2			; bit 1: L
-		jr	z,trn_r
-		cp	4			; bit 2: K
-		jp	z,move_door
-		cp	8			; bit 3: J
-		jp	z,trn_l
-		cp	16			; bit 4: S
-		jp	z,search
+		cp	1
+		jp	z,ismove	; bit 0: I
+		cp	2
+		jr	z,trn_r		; bit 1: L
+		cp	4
+		jp	z,move_door	; bit 2: K
+		cp	8
+		jp	z,trn_l		; bit 3: J
+		cp	16
+		jp	z,search	; bit 4: S
+		cp	32
+		jp	z,take_item	; bit 5: T
+
 		jr	key_press
+
 ; -------------------------
 trn_r:
 		call	message_area_clear
@@ -393,10 +399,10 @@ open_door:
 		jp	refresh
 no_key:
 		PRINT_STR	MSG_LINE2 + $A, msg_nokey
-		jp	refresh	
+		jp	wait_release	
 close_door:	ld	(hl),C_DOOR_CHAR		
+		call	remove_key
 		jp	refresh
-
 
 ; ---------------------------------------------------------------
 ; Jesli bylo powiadomienie w poprzednim ruchu - trzeba wyczyscic
@@ -431,7 +437,7 @@ ismove:
 
 ;-------------------------------------------------
 ; Zmienia pozycje Hero
-; IN: DE - nowa pozycja ( offset wzgl. MAP )
+; IN: DE - nowa pozycja ( offset wzgl. map )
 ;-------------------------------------------------
 move:
 		ld	(hero.offset),de	; Hero new offset
@@ -453,7 +459,7 @@ move:
 ;-----------------------------------------
 ; Funkja wypluwa:
 ; w A - char Tile bezposrednio przed Hero 
-; e DE - jego OFFSET wzgl. MAP
+; e DE - jego OFFSET wzgl. map
 ; w HL - jego ADRESS 
 ;-----------------------------------------
 right_before:
@@ -468,13 +474,13 @@ right_before:
 addit:	ld	hl,(hero.offset)
 		add	hl,de	
 		ex	de,hl		; offset Tile wzgl mapy 
-		ld	hl,MAP
+		ld	hl,map
 		add	hl,de		; ADRES TILE PRZED HERO !
 		ld	a,(hl)		; a w A jego ikona (ascii)
 		ret
 
 ;--------------------------------------------
-; Szuka ukrytych przejsc, przedmiotow itp.
+; Szuka ukrytych przejsc itp.
 ;--------------------------------------------
 search:
 		PRINT_STR	MSG_LINE1 + $9, msg_searching
@@ -503,11 +509,14 @@ search:
 nothing_here:
 		PRINT_STR	MSG_LINE2 + $8, msg_nothing
 		jp	key_press
-; --------------------------------------
-; Sprawdza czy jest klucz do tych drzwi
-; OUT: A = 0 nie ma klucza, A != 0 jest 
-; --------------------------------------
-check_key:
+
+; -----------------------------------------
+; Ustawia bit flagi przypisany do nr drzwi 
+; OUT:	A - ustawiony odpowiedni bit flagi 
+;		C - bajt flagi kluczy
+;		DE - adres bajtu flagi kluczy
+; -----------------------------------------
+door_keybit:
 		ld	a,(door_nr)
 		ld	b,a					; save nr
 		ld	de,bag.keys
@@ -523,12 +532,66 @@ low_flags:
 roll_right:
 		rrca
 		djnz	roll_right
+		ret
+
+; --------------------------------------
+; Sprawdza czy jest klucz do tych drzwi
+; OUT:	A = 0 nie ma klucza, A != 0 jest 
+; --------------------------------------
+check_key:
+		call	door_keybit
 		and	c
 		ret
+
+; ----------------------------------------------------
+; Wyjmuje klucz z otwartych drzwi i laduje do plecaka 
+; ----------------------------------------------------
+remove_key:
+		call	door_keybit
+		or	c
+		ld	(de),a
+		ret
+
+; ----------------------------------------------------
+; Podnosi klucz z gleby i laduje do plecaka 
+; ----------------------------------------------------
+take_key:
+		ld	(hl),FLOOR_CHAR
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_key
+		ret
+
+; ----------------------------------------------------
+; Jak cos jest pod nogami wsadza do plecaka 
+; ----------------------------------------------------
+take_item:
+		call	search_floor
+		cp	KEY_CHAR
+		jr	nz,floor_empty 
+		call	take_key
+		jp	wait_release
+		
+floor_empty:
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_dust
+		jp wait_release	
+
+; ----------------------------------------------------
+; Sprawdza co lezy pod nogami.
+; OUT:	A - char przedmiotu 
+;		HL - jego adress	
+; ----------------------------------------------------
+search_floor:
+		ld	hl,(hero.offset)
+		ld	de,map
+		add	hl,de
+		ld	a,(hl)
+		ret
+
 ;------------------------------------------------
 ; Przeszukuje po offsecie liste wszystkich drzwi
 ; i drukuje nr na drzwiach przed Hero
-; IN:  DE - offset drzwi ( wzgl. MAP )
+; IN:  DE - offset drzwi ( wzgl. map )
 ; USED : A, BC, HL
 ;------------------------------------------------
 room_label:
@@ -596,25 +659,33 @@ exit:
 ;------ map -----------
 map_height	db	12
 map_width	db	32	
+
 ;---- windows ---------
 w3d_position	db	1,17	; X, Y 
+
 ; -------------------------------------
 borders			ds	4		; Ymin, Ymax, Xmin, Xmax 
 message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
+
 ;------ hero ----------
 hero		Player	{ 2, 2, 1, $00 }
 hero_i		db	'^','>','v','<'			; ikony Hero
 hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
-bag			Inventory { $1084 }
+
+; ------- Inventory ------------------------------
+bag			Inventory { %10000100, %00010000 }
 neighbor_offs:	db	0,1,0,-1
+
 ;------ doors ---------
 doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
 passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
 door_nr		db	0				; numer drzwi na ktore patrzy Hero
+;==================
 
 		include	messages.asm
 		include map.asm
-; -----------------
+
+;==================
 
 End:
 

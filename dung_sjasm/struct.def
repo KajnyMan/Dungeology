@@ -6,5 +6,5 @@ offset			dw
 	ENDS
 ; ----
 	STRUCT	Inventory
-keys			dw		; 2 bajtowe pole flag, klucz nr 1 - 7 bit lsb
+keys			db : db			; 2 bajtowe pole flag, klucz nr 1 = 7 bit lsb
 	ENDS

@@ -25,7 +25,7 @@ field_of_view:
 
 	; Ustawienie wskaznika dla fov_list
 	; Wszystkie obiekty w polu widzenia beda dodany do tej listy
-	; Te poza MAP beda wyzerowane
+	; Te poza map beda wyzerowane
 	; 3 Bajty dla obiektu: y, x ( dla Terminala ), ASCII char obiektu 
 		ld	ix,fov_list
 
@@ -60,8 +60,8 @@ setdataloop:
 		ld	hl,(hero.offset)		
 		add	hl,de			; dodanie przesuniecia Hero
 		ex	de,hl			; save sumy przesuniec
-		ld	hl,MAP
-		add	hl,de			; i odczytanie z MAPy char 
+		ld	hl,map
+		add	hl,de			; i odczytanie z mapy char 
 		ld	a,(hl)			; Tile i zapisanie tego
 		ld	(ix+2),a		; char (Tile) na liscie fov
 
