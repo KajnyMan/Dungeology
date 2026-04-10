@@ -60,7 +60,7 @@ setdataloop:
 		ld	hl,(hero.offset)		
 		add	hl,de			; dodanie przesuniecia Hero
 		ex	de,hl			; save sumy przesuniec
-		ld	hl,map
+		ld	hl,MAP
 		add	hl,de			; i odczytanie z mapy char 
 		ld	a,(hl)			; Tile i zapisanie tego
 		ld	(ix+2),a		; char (Tile) na liscie fov
@@ -182,7 +182,7 @@ calc_fov:
 		ld	b,4			; glebokosc fov
 		ld	d,0
 		ld	e,10			; offset adresu od 5 do 2
-		ld	a,(map_width)
+		ld	a,(map.width)
 		ld	c,a
 nxtrow:
 		add	a,b

@@ -4,7 +4,15 @@ mapX			db
 direction		db
 offset			dw
 	ENDS
-; ----
+
+; ----------------------------
 	STRUCT	Inventory
 keys			db : db			; 2 bajtowe pole flag, klucz nr 1 = 7 bit lsb
+	ENDS
+
+; ----------------------------
+	STRUCT	Map
+width		db
+height		db
+size		dw
 	ENDS

@@ -207,12 +207,19 @@ CodeStart:
 		ld	de,FOV_YX
 		call set_atr_block
 		
-; ------ Czyta mape i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
+; ------ Oblicza rozmiar mapy --------
+		ld	hl,(map.width)
+		ld	b,h
+		ld	c,l
+		call	mul8
+		ld	(map.size),hl	
+
+; ------ Czyta MAPe i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
 		ld	ix,doors
 		ld	iy,passages
-		ld	hl,map
+		ld	hl,MAP
 		ld	de,0				; offset obiektow
-		ld	bc,MAP_HEIGHT * MAP_WIDTH	; licznik
+		ld	bc,(map.size)
 next_mapchar:
 		ld	a,(hl)
 		cp	C_DOOR_CHAR	
@@ -229,7 +236,7 @@ next_mapchar:
 		ld	(hl),WALL_CHAR
 		jr	inc_counters
 		; ---	drzwi   --- 
-		; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
+		; 0 - MAP Ofs lsb, 1 - msb, 2 - open(0), close(1)
 init_door:
 		ld	(ix),e				; offset obiektu lsb
 		ld	(ix+1),d			; msb
@@ -247,7 +254,7 @@ inc_counters:
 ; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
 		ld	a,(hero.mapY)
 		ld	c,a
-		ld	a,(map_width)
+		ld	a,(map.width)
 		ld	b,a
 		call	mul8
 		ld	a,(hero.mapX)
@@ -259,7 +266,7 @@ inc_counters:
 
 ; Oblicza i wypelnia tabele neighbor_offs
 		ld	ix,neighbor_offs
-		ld	a,(map_width)
+		ld	a,(map.width)
 		ld	(ix+2),a
 		neg
 		ld	(ix),a
@@ -437,7 +444,7 @@ ismove:
 
 ;-------------------------------------------------
 ; Zmienia pozycje Hero
-; IN: DE - nowa pozycja ( offset wzgl. map )
+; IN: DE - nowa pozycja ( offset wzgl. MAP )
 ;-------------------------------------------------
 move:
 		ld	(hero.offset),de	; Hero new offset
@@ -459,7 +466,7 @@ move:
 ;-----------------------------------------
 ; Funkja wypluwa:
 ; w A - char Tile bezposrednio przed Hero 
-; e DE - jego OFFSET wzgl. map
+; e DE - jego OFFSET wzgl. MAP
 ; w HL - jego ADRESS 
 ;-----------------------------------------
 right_before:
@@ -474,7 +481,7 @@ right_before:
 addit:	ld	hl,(hero.offset)
 		add	hl,de	
 		ex	de,hl		; offset Tile wzgl mapy 
-		ld	hl,map
+		ld	hl,MAP
 		add	hl,de		; ADRES TILE PRZED HERO !
 		ld	a,(hl)		; a w A jego ikona (ascii)
 		ret
@@ -483,6 +490,7 @@ addit:	ld	hl,(hero.offset)
 ; Szuka ukrytych przejsc itp.
 ;--------------------------------------------
 search:
+	;	call	message_area_clear
 		PRINT_STR	MSG_LINE1 + $9, msg_searching
 		call 	right_before
 
@@ -504,11 +512,110 @@ search:
 		dec	hl						; nieodkrytych
 		ld	(hl),0					; przejsc
 		PRINT_STR	MSG_LINE2 + $8, msg_psgfinded
-		jp	refresh	
+		jp	refresh
 
 nothing_here:
 		PRINT_STR	MSG_LINE2 + $8, msg_nothing
-		jp	key_press
+		jp	wait_release
+
+; ----------------------------------------------------
+; Jak cos jest pod nogami wsadza do plecaka 
+; ----------------------------------------------------
+take_item:
+		call	message_area_clear
+		call	search_floor
+		ld	a,c
+		cp	KEY_CHAR
+		jr	nz,floor_empty 
+		call	take_key
+		jp	wait_release
+		
+floor_empty:
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_dust
+		jp wait_release	
+
+; ----------------------------------------------------
+; Sprawdza co lezy pod nogami.
+; OUT:	C - char przedmiotu 
+;		HL - jego adress	
+;		DE - i offset
+; ----------------------------------------------------
+search_floor:
+		ld	de,(hero.offset)
+		ld	hl,MAP
+		add	hl,de
+		ld	c,(hl)
+		ret
+
+; --------------------------------------
+; Sprawdza czy jest klucz do tych drzwi
+; OUT:	A = 0 nie ma klucza, A != 0 jest 
+; --------------------------------------
+check_key:
+		call	door_keybit
+		and	c
+		ret
+
+; ----------------------------------------------------
+; Wyjmuje klucz z otwartych drzwi i laduje do plecaka 
+; ----------------------------------------------------
+remove_key:
+		call	door_keybit
+		or	c
+		ld	(de),a
+		ret
+
+; ----------------------------------------------------
+; Podnosi klucz z gleby i laduje do plecaka 
+; IN:	C - char klucza
+; ----------------------------------------------------
+take_key:
+		call	search_map
+		ld	(hl),FLOOR_CHAR
+		ld	hl,key_door_nr
+		ld	d,0
+		ld	e,b
+		add	hl,de
+		ld	a,(hl)
+		ld	(door_nr),a
+		call	remove_key
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_key
+		ret
+
+; ----------------------------------------------------
+; Przeszukuje mape w poszukiwaniu char'a
+; IN:	C - char do znalezienia
+;		HL - adres do sprawdzenia
+; OUT:	B	- ktory w kolejnosci na MAP'e	
+; ----------------------------------------------------
+search_map:
+		ex	de,hl				; adres do znalezienia w DE
+		ld	b,0					; licznik C char'ow
+		ld	hl,MAP
+not_this:
+		ld	a,(hl)	
+		cp	c
+		jr	z,maybe_this
+		inc	hl
+		jr	not_this	
+maybe_this:
+		ld	a,e
+		cp	l
+		jr	z,check_msb
+		inc hl
+		inc	b					; char ten, ale nie ten adres
+		jr not_this				; jednak nie
+check_msb:
+		ld	a,d
+		cp	h
+		jr	z,this_one
+		inc	hl
+		inc	b					; char ten, ale nie ten adres
+		jr not_this				; no nie
+this_one:
+		ret
 
 ; -----------------------------------------
 ; Ustawia bit flagi przypisany do nr drzwi 
@@ -532,60 +639,6 @@ low_flags:
 roll_right:
 		rrca
 		djnz	roll_right
-		ret
-
-; --------------------------------------
-; Sprawdza czy jest klucz do tych drzwi
-; OUT:	A = 0 nie ma klucza, A != 0 jest 
-; --------------------------------------
-check_key:
-		call	door_keybit
-		and	c
-		ret
-
-; ----------------------------------------------------
-; Wyjmuje klucz z otwartych drzwi i laduje do plecaka 
-; ----------------------------------------------------
-remove_key:
-		call	door_keybit
-		or	c
-		ld	(de),a
-		ret
-
-; ----------------------------------------------------
-; Podnosi klucz z gleby i laduje do plecaka 
-; ----------------------------------------------------
-take_key:
-		ld	(hl),FLOOR_CHAR
-		PRINT_STR	MSG_LINE1 + $9, msg_floor
-		PRINT_STR	MSG_LINE2 + $9, msg_key
-		ret
-
-; ----------------------------------------------------
-; Jak cos jest pod nogami wsadza do plecaka 
-; ----------------------------------------------------
-take_item:
-		call	search_floor
-		cp	KEY_CHAR
-		jr	nz,floor_empty 
-		call	take_key
-		jp	wait_release
-		
-floor_empty:
-		PRINT_STR	MSG_LINE1 + $9, msg_floor
-		PRINT_STR	MSG_LINE2 + $9, msg_dust
-		jp wait_release	
-
-; ----------------------------------------------------
-; Sprawdza co lezy pod nogami.
-; OUT:	A - char przedmiotu 
-;		HL - jego adress	
-; ----------------------------------------------------
-search_floor:
-		ld	hl,(hero.offset)
-		ld	de,map
-		add	hl,de
-		ld	a,(hl)
 		ret
 
 ;------------------------------------------------
@@ -657,8 +710,7 @@ exit:
 ;=========     D A T A     =========
 
 ;------ map -----------
-map_height	db	12
-map_width	db	32	
+map	Map	{ 32, 12 }
 
 ;---- windows ---------
 w3d_position	db	1,17	; X, Y 
@@ -673,7 +725,7 @@ hero_i		db	'^','>','v','<'			; ikony Hero
 hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
 
 ; ------- Inventory ------------------------------
-bag			Inventory { %10000100, %00010000 }
+bag			Inventory { %10000100, %00000000 }
 neighbor_offs:	db	0,1,0,-1
 
 ;------ doors ---------
