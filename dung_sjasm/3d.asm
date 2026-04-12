@@ -1,17 +1,17 @@
 printwall_3d:	
 		ld	hl,wall_sprites
 ;		ld	d,WALL3D_ATR
-		jr	common
+		jr	_common
 
 print_c_door_3d:	
 		ld	hl,c_door_sprites
 ;		ld	d,C_DOOR3D_ATR
-		jr	common
+		jr	_common
 print_o_door_3d:	
 		ld	hl,o_door_sprites
 ;		ld	d,O_DOOR3D_ATR
 
-common:
+_common:
 		ex	af,af'
 		ld	a,d
 		ex	af,af'			; atrybut Tile przygotowany
@@ -27,18 +27,16 @@ common:
 
 		ld	a,(de)
 		or	a				; jesli zero to nie ma sprite'a
-		jp	z,printout		; w tej pozycji, a wiec wypad
+		jp	z,_printout		; w tej pozycji, a wiec wypad
 		ld	b,a				; licznik lini ustawiony
 		inc	de				; iterator na Y 
-nxt:
+_nxt:
 		push	bc			; SAVE licznik
 		ld	a,(de)
 		ld	b,a
 		inc	de				; iterator na X
 		ld	a,(de)
 		ld	c,a				; offset Y,X w BC	
-		
-;		ld	hl,(w3d_position)
 		ld	hl,W3D_YX
 		add	hl,bc			; dodanie pozycji okna 3D 
 		ld	b,h
@@ -56,8 +54,8 @@ nxt:
 		ld	e,c					; iterator DE na Y nastepnej lini Tile
 		
 		pop		bc				; RESTORE licznik
-		djnz	nxt
-		jp	printout
+		djnz	_nxt
+		jp	_printout
 
 space_string	ds	24,' '
 				db	'$'

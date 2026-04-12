@@ -11,11 +11,11 @@ mul8:
 		ld	d,0
 		ld	e,b
 		ld	b,8			; licznik bitow		
-loop:	add	hl,hl
+_loop:	add	hl,hl
 		rla
-		jr	nc,skip
+		jr	nc,_skip
 		add	hl,de
-skip:	djnz	loop
+_skip:	djnz	_loop
 
 		pop	de
 		pop	bc
@@ -55,14 +55,14 @@ skip:	djnz	loop
 ;-----------------------------
 h2asci:
 		ld	c,0
-loop2:	
+_loop2:	
 		ld	b,a
 		cp	10
-		jr	c,fine	;jesli a<10 koniec
+		jr	c,_fine	;jesli a<10 koniec
 		inc	c
 		sub	10
-		jr	loop2
-fine:
+		jr	_loop2
+_fine:
 		add	a,'0'
 		ld	b,a
 		ld	a,c

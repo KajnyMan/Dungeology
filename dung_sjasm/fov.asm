@@ -29,9 +29,6 @@ field_of_view:
 	; 3 Bajty dla obiektu: y, x ( dla Terminala ), ASCII char obiektu 
 		ld	ix,fov_list
 
-	; Ustawienie wskaznika dla map_position
-		ld	iy,borders
-
 	; Dodanie offsetow koordynatow Tiles do koordynatow Hero	
 		ld	b,18			; 18 przebiegow petli
 setdataloop:
@@ -67,9 +64,9 @@ setdataloop:
 
 	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
 	; i wskaznika listy FOV
-shift:	ld	hl,(coords_pointer)
-out1:	inc	hl
-out2:	inc	hl
+		ld	hl,(coords_pointer)
+		inc	hl
+		inc	hl
 		ld	(coords_pointer),hl
 		ld	hl,(offset_pointer)
 		inc	hl
@@ -85,9 +82,6 @@ out2:	inc	hl
 	; - Petla wyswietlajaca FOV i zapisujaca do prev_fov -
 	; ----------------------------------------------------
 		ld	b,18			; ilosc mozliwych pol widzenia
-		; Ustawienie wskaznikow
-	;	ld	hl,prev_fov_list
-	;	ld	(iterator),hl
 printloop:
 		push	bc
 
@@ -100,7 +94,7 @@ printloop:
 		ld	(main_counter),a
 		cp	6			; spradza czy Tile widoczny
 		jp	nc,is_visible		; Reszta zawsze widoczna.
-vsbl:
+_vsbl:
 		; Ustawienie kursora
 		ld	hl,fov_list_end
 		ld	a,(main_counter)
@@ -132,7 +126,7 @@ vsbl:
 		cp	O_DOOR_CHAR	
 		jp	z,print_o_door_3d	; Sprite na ekran
 
-printout:
+_printout:
 		pop	bc
 		djnz	printloop			
 		ret
@@ -142,34 +136,32 @@ printout:
 ; ( w A jest licznil petli funkji wywolujacej )
 ;-----------------------------------	
 is_visible:
-		ld	b,3			; 3 przebiegi petli
-		sub	6			; brak zaslon dla pierwszych 5  
-		ld	c,a			; save i
-		add	a,a			; i x 2	
-		add	a,c			; i x 3 (3 potencjalne zaslony)
+		ld	b,3				; 3 przebiegi petli
+		sub	6				; brak zaslon dla pierwszych 5  
+		ld	c,a				; save i
+		add	a,a				; i x 2	
+		add	a,c				; i x 3 (3 potencjalne zaslony)
 		ld	hl,list_indexes
-		ld	e,a
-;		ld	d,0
+		ld	e,a				; D wyzerowane  wyzej
 		add	hl,de			; wskaznik na index zaslony
-three:
+_three:
 		ld	a,(hl)	
 		or	a
-		jp	z,vsbl			; jak 0 - wypad
-		ld	c,a			; Save index
+		jp	z,_vsbl			; jak 0 - wypad
+		ld	c,a				; Save index
 		add	a,a
-		add	a,c			; index x 3 ( y,x,char )
-		ld	iy,fov_list		; od tego liczymy offsety
-		ld	e,a
-;		ld	d,0
-		add	iy,de
-		ld	a,(iy+2)		; Tile.char do sprawdzenia!
+		add	a,c				; index x 3 ( y,x,char )
+		ld	ix,fov_list		; od tego liczymy offsety
+		ld	e,a				; D wyzerowane  wyzej
+		add	ix,de
+		ld	a,(ix+2)		; Tile.char do sprawdzenia!
 		cp	WALL_CHAR
-		jp	z,printout
+		jp	z,_printout
 		cp	'+'
-		jp	z,printout
+		jp	z,_printout
 		inc	hl
-		djnz	three	
-		jp	vsbl	
+		djnz	_three	
+		jp	_vsbl	
 
 ; -------------------------------------------------------
 ; Oblicza i wypelnia wynikami tabele offsetow
@@ -184,7 +176,7 @@ calc_fov:
 		ld	e,10			; offset adresu od 5 do 2
 		ld	a,(map.width)
 		ld	c,a
-nxtrow:
+_nxtrow:
 		add	a,b
 		ld	(ix+2),a	
 ;		ld	(ix+3),0	
@@ -214,7 +206,7 @@ nxtrow:
 
 		ld	a,b
 		cp	3
-		jr	c,ommit1
+		jr	c,_ommit1
 		ld	a,(ix+2)
 		add	a,c
 		ld	(ix+4),a
@@ -234,13 +226,13 @@ nxtrow:
 		inc	hl	
 		ld	(iy+4),l
 		ld	(iy+5),h
-ommit1:
+_ommit1:
 		add	ix,de
 		add	iy,de
 		dec	e	
 		dec	e	
 		ld	a,c
-		djnz	nxtrow
+		djnz	_nxtrow
 
 		ld	(ix+2),a
 ;		ld	(ix+3),0
@@ -255,7 +247,7 @@ ommit1:
 		ld	hl,fov_n
 		ld	de,fov_s
 		ld	b,36
-nxt1:	push	bc
+_nxt1:	push	bc
 		ld	a,(hl)	
 		cpl
 		ld	c,a	
@@ -272,7 +264,7 @@ nxt1:	push	bc
 		inc	hl
 		inc	de
 		pop	bc
-		djnz	nxt1
+		djnz	_nxt1
 		ret
 DSEG	
 main_counter:	db	0

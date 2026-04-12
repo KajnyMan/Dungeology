@@ -10,28 +10,28 @@ scan_keyboard:
 		in	a,(0FEh)
 		cpl
 		and	%00000100			; i
-		jr	nz,set_bit0
+		jr	nz,_set_bit0
 
 		ld	a,A_G
 		in	a,(0FEh)
 		cpl
 		and	%00000010			; s
-		jr	nz,set_bit4
+		jr	nz,_set_bit4
 
 		ld	a,Q_T
 		in	a,(0FEh)
 		cpl
 		and	%00010000			; t
-		jr	nz,set_bit5
+		jr	nz,_set_bit5
 
 		ret
 
-set_bit0:
+_set_bit0:
 		ld	a,1		; 0 bit ustawiony
 		ret
-set_bit4:
+_set_bit4:
 		ld	a,16		; 4 bit ustawiony
 		ret
-set_bit5:
+_set_bit5:
 		ld	a,32		; 5 bit ustawiony
 		ret

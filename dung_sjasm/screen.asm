@@ -6,7 +6,6 @@
 ;	DE - adres pozycji na ekranie
 ; USED:	A  
 ; ==================================================================
-
 gotoyx:
 		ld	de,SCREEN
 		ld	a,b
@@ -25,6 +24,7 @@ gotoyx:
 		or	e			; przesuniecie X do adresu
 		ld	e,a
 		ret
+
 ; ===================================================
 ; =======       Drukuje znak na ekranie      ========
 ; IN: 	DE - adres gdzie ma pojawic sie znak
@@ -32,7 +32,6 @@ gotoyx:
 ; USED:	A, DE, HL
 ; ===================================================
 pchar:
-	
 		sub	20h			; start od spacji, a
 		add	a,a			; x2
 		ld	h,0
@@ -82,6 +81,7 @@ print_tile_line:
 		jr	print_tile_line	
 ptile_out:
 		ret
+
 ; ==================================================================
 ; IN:	DE - adres gdzie ma pojawic sie string
 ;		BC - adres stringa do wyswietlenia 
@@ -110,11 +110,10 @@ pstring_out:
 clear_txtlines:
 		ld	d,h
 		ld	e,l			; SAVE HL
-
-txtline_down:
+_txtline_down:
 		xor	a
 		ld	c,8
-line_down:
+_line_down:
 	REPT	FOV_WIDTH
 		ld	(hl),a
 		inc	l
@@ -122,20 +121,20 @@ line_down:
 		ld	l,e			; RESTORE L
 		inc	h
 		dec	c
-	jp	nz,line_down
+	jp	nz,_line_down
 		ld	h,d			; RESTORE H
 		ld	a,l
 		add	a,SCREEN_WIDTH
 		ld	l,a
 		ld	e,l
-		jr	nc,same_third	
+		jr	nc,_same_third	
 		ld	a,h
 		add	a,$08
 		ld	h,a
 		ld	d,h
-same_third:
+_same_third:
 		dec	b
-		jp	nz,txtline_down
+		jp	nz,_txtline_down
 		ret
 
 ; ==================================================================
@@ -170,7 +169,9 @@ set_atr
 ;		DE - YX
 ; ==================================================================
 set_atr_line
-	push	af
+
+		push	af
+
 		ld	a,d
 		add	a,a
 		add	a,a
@@ -185,13 +186,15 @@ set_atr_line
 		ld	a,ATR_MSB	
 		add	a,h
 		ld	h,a
-	ld	a,b
+		ld	a,b
 		ld	b,c
-	pop		af		
-nxt_col:	
+
+		pop		af		
+
+_nxt_col:	
 		ld	(hl),a
 		inc	l
-	djnz	nxt_col
+	djnz	_nxt_col
 		ret
 			
 ; ==================================================================
@@ -202,12 +205,17 @@ nxt_col:
 ;		DE - YX
 ; ==================================================================
 set_atr_block:
-	push	bc
+	
+		push	bc
+
 		call set_atr_line	
 		inc	d
-	pop		bc
+
+		pop		bc
+
 	djnz	set_atr_block
 		ret
+
 ; ==================================================================
 ; Przyjmuje y,x ekranu, a zwraca adres w pamieci atrybutow ekranu 
 ; IN:
@@ -257,9 +265,10 @@ set_atr_block:
 print_frames:
 		ld	hl,fov_frame_indexes			; iterator
 			ld	b,FFH * 2 + F3H * 2	; licznik
-;		ld	b,34	
-line_dwn:
-	push	bc
+_line_dwn:
+
+		push	bc
+
 		ld	b,(hl)
 		inc	hl
 		ld	c,(hl)
@@ -268,7 +277,7 @@ line_dwn:
 		inc	hl
 		ld	b,h
 		ld	c,l
-		
+
 		ex	af,af'
 		ld	a,BLACK_BGD OR GREEN 
 		ex	af,af'
@@ -278,14 +287,14 @@ line_dwn:
 		ld	h,b
 		ld	l,c
 		inc	hl
-	pop		bc
-	djnz	line_dwn
+
+		pop		bc
+
+		djnz	_line_dwn
 		ret
-		
-		
-			
-		
-fov_frame_indexes
+
+; ========================================================================	
+fov_frame_indexes:
 	db	FFY, FFX, 76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
 	db	FFY+1, FFX, 81, $FF, FFY+1, FFX+FFW, 81, $FF
 	db	FFY+2, FFX, 82, $FF, FFY+2, FFX+FFW, 82, $FF
