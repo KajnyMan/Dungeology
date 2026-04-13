@@ -2,6 +2,8 @@
 ; 	D U N G E O L O G Y - zx spectrum
 ;-------------------------------------------;
 
+	DEVICE	ZXSPECTRUM48
+	EMPTYTAP "dng.tap"
 
 ; rozmieszczenie elementow ekranu ( od tego liczona jest reszta )
 FOV_Y			equ 2
@@ -45,8 +47,6 @@ P_Y				equ	$DF
 Enter_H			equ	$BF
 Space_B			equ	$7F
 	; mapa i hero
-MAP_HEIGHT		equ	12
-MAP_WIDTH		equ	32
 FOV_YX			equ	( FOV_Y * 256 ) + FOV_X 
 FOV_WIDTH		equ 9
 FOV_HEIGHT		equ 9
@@ -77,19 +77,18 @@ MSG_HEIGHT		equ 2
 WALL_CHAR		equ	'#'
 PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
-C_DOOR			equ	'+'
-O_DOOR			equ	'/'
+C_DOOR_CHAR		equ	'+'
+O_DOOR_CHAR		equ	'/'
+KEY_CHAR		equ	'~'
 PASSAGE_CHAR	equ	'='
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
 DELIM			equ	0FFh
-OBJ_MAX			equ	32
+OBJ_MAX			equ	16
 HERO_Y			equ	FOV_Y + 4
 HERO_X			equ FOV_X + 4 	
 HERO_ATR		equ BLACK_BGD OR YELLOW
-;HERO_YX			equ $0505
 HERO_YX			equ ( HERO_Y * 256 ) + HERO_X 
-
 NORTH			equ	0
 EAST			equ	1
 SOUTH			equ	2
@@ -109,6 +108,7 @@ SCR3			equ	$5000
 ATR_MAP_TOP		equ	$5980
 ATR_MSG_TOP 	equ	$5A00
 ATR_3D_TOP		equ	$5B00
+PRINTER_BUF		equ $5B00
 FONTS_MSB		equ $3D
 SCR1_MSB		equ $40
 SCR2_MSB		equ $48
@@ -117,35 +117,64 @@ ATR_MSB			equ	$58
 ATR1_MSB		equ	$58
 ATR2_MSB		equ	$59
 ATR3_MSB		equ	$5A
+
 	; adresy ruchome
-;FOV_ADR			equ	$4021
 FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
 W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X	
 MSG_ADR			equ	SCR2 + ( ( MSG_Y - $08 ) * $20 ) + MSG_X 
 ATR3_BUF		equ	$F000
 ATR3_BUF_MSB	equ	$F0
-ATR_BUF_TOP		equ	$F100
 TILES			equ	$8000
 TILES_MSB		equ $80
+GAME_START		equ	$8400
 
+		
+		include	struct.def
+		include	macro.asm
 
-include	macro.asm
+; ----------------
+;  Basic Loader
+; ----------------
+		org	PRINTER_BUF
+BasicStart:
+    db 0, 10            ; Numer linii
+    dw _b_end - _b_line   ; Dlugosc linii
+_b_line:
+    db $FD              ; CLEAR
+    ; "00000" jako tekst, potem $0E i 5 bajtow (format Sinclaira dla 32767)
+    db "00000", $0E, 0, 0, $FF, $7F, 0 
+    db ":"
+    db $EF, $22, $22, $AF ; LOAD "" CODE
+    db ":"
+    db $F9, $C0         ; RANDOMIZE USR
+    ; "32768" jako tekst, potem $0E i 5 bajtow (format Sinclaira dla 32768)
+    db "00000", $0E, 0, 0, low CodeStart, high CodeStart, 0
+    db $0D              ; Enter
+_b_end:
 
+    ; pierwszy blok (BASIC) na tasme
+    SAVETAP "dng.tap", BASIC, "Loader", BasicStart, _b_end - BasicStart, 10
+; -----------------
+; Kafelki
+; -----------------
 		org	TILES
-include tiles.asm
+Start:
+		include tiles.asm
 
-Start:	
+; ================
+;  Start Programu
+; ================
+CodeStart:
 		di
 		
 ;============== D A T A     I N I T ===================
 		BORDER_COLOR BLACK
 		SET_COLOR	BLACK_BGD OR BLACK, ATR_3D_TOP, 24
-
 		CLEAR_LINES SCREEN_TOP, 191
 		call	print_frames
 
 		; kolory okna powiadomien
-		ld	a,CYAN_BGD OR BLACK 
+		ld	a,YELLOW_BGD OR BLACK 
 		ld	b,MSG_HEIGHT
 		ld	c,MSG_WIDTH
 		ld	de,MSG_YX
@@ -172,65 +201,66 @@ Start:
 		ld	de,FOV_YX
 		call set_atr_block
 		
-; ------ Czyta mape i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
+; ------ Oblicza rozmiar mapy --------
+		ld	hl,(map.width)
+		ld	b,h
+		ld	c,l
+		call	mul8
+		ld	(map.size),hl	
+
+; ------ Czyta MAPe i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
 		ld	ix,doors
 		ld	iy,passages
 		ld	hl,MAP
 		ld	de,0				; offset obiektow
-		ld	bc,MAP_HEIGHT * MAP_WIDTH	; licznik
-next_mapchar:
+		ld	bc,(map.size)
+_next_mapchar:
 		ld	a,(hl)
-		cp	C_DOOR
-		jr	z,init_door_cls
-		cp	O_DOOR
-		jr	z,init_door_opn
+		cp	C_DOOR_CHAR	
+		jr	z,_init_door
+		cp	O_DOOR_CHAR	
+		jr	z,_init_door
 		cp	PASSAGE_CHAR
-		jr	nz,inc_counters
+		jr	nz,_inc_counters
 		; --- ukryte przejscia ----
 		ld	(iy),e
 		ld	(iy+1),d
 		inc	iy
 		inc	iy
 		ld	(hl),WALL_CHAR
-		jr	inc_counters
+		jr	_inc_counters
 		; ---	drzwi   --- 
-		; 0 - map ofs lsb, 1 - msb, 2 - open(0), close(1)
-init_door_cls:
-		ld	(ix+2),1	
-		jr	init_offset
-init_door_opn:
-		ld	(ix+2),0
-init_offset:
+		; 0 - MAP Ofs lsb, 1 - msb, 2 - open(0), close(1)
+_init_door:
 		ld	(ix),e				; offset obiektu lsb
 		ld	(ix+1),d			; msb
-		inc	ix			
 		inc	ix
 		inc	ix
 		; -----------------
-inc_counters:
+_inc_counters:
 		inc	hl
 		inc	de
 		dec	bc	
 		ld	a,b
 		or	c
-		jr	nz,next_mapchar
+		jr	nz,_next_mapchar
 
-; Na podstawie Y,X oblicza offset hero wzgledem poczatku MAP'y
-		ld	a,(hero_mapY)
+; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
+		ld	a,(hero.mapY)
 		ld	c,a
-		ld	a,(map_width)
+		ld	a,(map.width)
 		ld	b,a
 		call	mul8
-		ld	a,(hero_mapX)
+		ld	a,(hero.mapX)
 		ld	d,0
 		ld	e,a
 		add	hl,de	
-		ld	(hero_o),hl
+		ld	(hero.offset),hl
 
 
 ; Oblicza i wypelnia tabele neighbor_offs
 		ld	ix,neighbor_offs
-		ld	a,(map_width)
+		ld	a,(map.width)
 		ld	(ix+2),a
 		neg
 		ld	(ix),a
@@ -244,7 +274,7 @@ inc_counters:
 		
 ; ===============  M A I N    L O O P =================
 
-		jp	begin
+		jp	_begin
 
 refresh:
 		; czyszczenie okna fov
@@ -256,7 +286,7 @@ refresh:
 		ld	hl,W3D_ADR
 		ld	b,W3D_HEIGHT
 		call	clear_txtlines
-begin:
+_begin:
 		; "wygaszone" okno 3D przy rysowaniu
 		ld	a,BLACK_BGD OR BLACK
 		ld	b,W3D_HEIGHT
@@ -283,7 +313,7 @@ begin:
 		; Hero na ekran	
 		; --------------
 		ld	hl,hero_i		; ikona hero
-		ld	a,(hero_d)		; w zaleznosci
+		ld	a,(hero.direction)		; w zaleznosci
 		ld	b,0				; od kierunku
 		ld	c,a				; i zwrotu
 		add	hl,bc			; ^ > v <
@@ -307,23 +337,28 @@ wait_release:
 
 key_press:
 		call	scan_keyboard	
+
 		cp	0
 		jp	z,key_press
-		cp	1			; bit 0: I
-		jp	z,ismove
-		cp	2			; bit 1: L
-		jr	z,trn_r
-		cp	4			; bit 2: K
-		jp	z,move_door
-		cp	8			; bit 3: J
-		jp	z,trn_l
-		cp	16			; bit 4: S
-		jp	z,search
+		cp	1
+		jp	z,ismove	; bit 0: I
+		cp	2
+		jr	z,trn_r		; bit 1: L
+		cp	4
+		jp	z,move_door	; bit 2: K
+		cp	8
+		jp	z,trn_l		; bit 3: J
+		cp	16
+		jp	z,search	; bit 4: S
+		cp	32
+		jp	z,take_item	; bit 5: T
+
 		jr	key_press
+
 ; -------------------------
 trn_r:
 		call	message_area_clear
-		ld	hl,hero_d
+		ld	hl,hero.direction
 		inc	(hl)
 		ld	a,(hl)
 		cp	WEST+1
@@ -332,7 +367,7 @@ trn_r:
 		jp	refresh
 trn_l:
 		call	message_area_clear
-		ld	hl,hero_d
+		ld	hl,hero.direction
 		dec	(hl)
 		ld	a,(hl)
 		cp	NORTH-1
@@ -344,21 +379,30 @@ trn_l:
 move_door:
 		call	message_area_clear
 		call	right_before
-		cp	C_DOOR
-		jr	z,open_door
-		cp	O_DOOR
+		cp	C_DOOR_CHAR	
+		jr	z,_print_door_nr
+		cp	O_DOOR_CHAR	
+		jr	z,_print_door_nr
+		jp	key_press			; nie ma tutaj drzwi! Wypad
+_print_door_nr:
+		push	hl				; save adresu drzwi
+		call	room_label
+		PRINT_STR	MSG_LINE1 + $A, msg_door
+		pop		hl				; restore
+		ld	a,(hl)
+		cp	O_DOOR_CHAR	
 		jr	z,close_door
-		jp	key_press	; nie ma tutaj drzwi! Wypad
+		
 open_door:
-		ld	(hl),O_DOOR	
-		jr	p_msg
-close_door:
-		ld	(hl),C_DOOR
-p_msg:
-		call	roomlabel
-		ld	de,MSG_LINE1 + $A
-		ld	bc,msg_door
-		call	pstring
+		call	check_key
+		jr	z,_no_key
+		ld	(hl),O_DOOR_CHAR		
+		jp	refresh
+_no_key:
+		PRINT_STR	MSG_LINE2 + $A, msg_nokey
+		jp	wait_release	
+close_door:	ld	(hl),C_DOOR_CHAR		
+		call	remove_key
 		jp	refresh
 
 ; ---------------------------------------------------------------
@@ -386,7 +430,7 @@ ismove:
 		call	right_before
 		cp	WALL_CHAR
 		jp	z,key_press
-		cp	C_DOOR
+		cp	C_DOOR_CHAR		
 		jp	z,key_press
 		call	move
 		call	message_area_clear
@@ -397,20 +441,20 @@ ismove:
 ; IN: DE - nowa pozycja ( offset wzgl. MAP )
 ;-------------------------------------------------
 move:
-		ld	(hero_o),de	; Hero new offset
+		ld	(hero.offset),de	; Hero new offset
 		ld	hl,hero_s	; /
-		ld	a,(hero_d)	; Przesuniecie kursora
+		ld	a,(hero.direction)	; Przesuniecie kursora
 		add	a,a		; do nowej pozycji
 		ld	e,a		; Hero
 		ld	d,00h
 		add	hl,de
-		ld	a,(hero_mapX)
+		ld	a,(hero.mapX)
 		add	a,(hl)
-		ld	(hero_mapX),a
+		ld	(hero.mapX),a
 		inc	hl
-		ld	a,(hero_mapY)
+		ld	a,(hero.mapX)
 		add	a,(hl)
-		ld	(hero_mapY),a	; \____________
+		ld	(hero.mapY),a	; \____________
 		ret
 
 ;-----------------------------------------
@@ -421,14 +465,14 @@ move:
 ;-----------------------------------------
 right_before:
 		ld	hl,neighbor_offs
-		ld	de,(hero_d)
+		ld	de,(hero.direction)
 		ld	d,00h
 		add	hl,de		; adres offset'u Tile wzgl Hero
 		ld	e,(hl)
 		bit	7,e
-		jr	z,addit
+		jr	z,_addit
 		ld	d,0FFh
-addit:	ld	hl,(hero_o)
+_addit:	ld	hl,(hero.offset)
 		add	hl,de	
 		ex	de,hl		; offset Tile wzgl mapy 
 		ld	hl,MAP
@@ -437,76 +481,216 @@ addit:	ld	hl,(hero_o)
 		ret
 
 ;--------------------------------------------
-; Szuka ukrytych przejsc, przedmiotow itp.
+; Szuka ukrytych przejsc itp.
 ;--------------------------------------------
 search:
-		ld	de,MSG_LINE1 + $9 
-		ld	bc,msg_searching
-		call	pstring
+	;	call	message_area_clear
+		PRINT_STR	MSG_LINE1 + $9, msg_searching
 		call 	right_before
 
+		push	hl					; save adres char przed Hero
+
 		; ukryte przejscie ?
-		push	hl					; save char przed Hero
 		ld	b,OBJ_MAX
 		ld	hl,passages
-		call	check_offset16
-		pop		hl					; restore
+		call	check_offset16		; w HL msb offsety znalezionego objektu
 
-		ld	a,b		
+		pop		de					; restore
+
 		cp	0FFh					; a moze nic tu nie ma?
-		jp	z,nothing_here	
-		ld	(hl),FLOOR_CHAR			; jesli przejcie to zburz mur
-		ld	de,MSG_LINE2 + $8
-		ld	bc,msg_psgfinded
-		call	pstring
-		jp	refresh	
-nothing_here:
-		ld	de,MSG_LINE2 + $8
-		ld	bc,msg_nothing
-		call	pstring
-		jp	key_press
+		jp	z,_nothing_here	
 
+		ld	a,FLOOR_CHAR
+		ld	(de),a					; jesli przejcie to zburz mur
+		ld	(hl),0					; Zeruje ten offset na liscie
+		dec	hl						; nieodkrytych
+		ld	(hl),0					; przejsc
+		PRINT_STR	MSG_LINE2 + $8, msg_psgfinded
+		jp	refresh
+
+_nothing_here:
+		PRINT_STR	MSG_LINE2 + $8, msg_nothing
+		jp	wait_release
+
+; ----------------------------------------------------
+; Jak cos jest pod nogami wsadza do plecaka 
+; ----------------------------------------------------
+take_item:
+		call	message_area_clear
+		call	search_floor
+		ld	a,c
+		cp	KEY_CHAR
+		jr	nz,_floor_empty 
+		call	take_key
+		jp	wait_release
+_floor_empty:
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_dust
+		jp wait_release	
+
+; ----------------------------------------------------
+; Sprawdza co lezy pod nogami.
+; OUT:	C - char przedmiotu 
+;		HL - jego adress	
+;		DE - i offset
+; ----------------------------------------------------
+search_floor:
+		ld	de,(hero.offset)
+		ld	hl,MAP
+		add	hl,de
+		ld	c,(hl)
+		ret
+
+; --------------------------------------
+; Sprawdza czy jest klucz do tych drzwi
+; OUT:	A = 0 nie ma klucza, A != 0 jest 
+; --------------------------------------
+check_key:
+		call	door_keybit
+		and	c
+		ret
+
+; ----------------------------------------------------
+; Wyjmuje klucz z otwartych drzwi i laduje do plecaka 
+; ----------------------------------------------------
+remove_key:
+		call	door_keybit
+		or	c
+		ld	(de),a
+		ret
+
+; ----------------------------------------------------
+; Podnosi klucz z gleby i laduje do plecaka 
+; IN:	C - char klucza
+; ----------------------------------------------------
+take_key:
+		call	search_map
+		ld	(hl),FLOOR_CHAR
+		ld	hl,key_door_nr
+		ld	d,0
+		ld	e,b
+		add	hl,de
+		ld	a,(hl)
+		ld	(door_nr),a
+		call	remove_key
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_key
+		ret
+
+; ----------------------------------------------------
+; Przeszukuje mape w poszukiwaniu char'a
+; IN:	C - char do znalezienia
+;		HL - adres do sprawdzenia
+; OUT:	B	- ktory w kolejnosci na MAP'e	
+; ----------------------------------------------------
+search_map:
+		ex	de,hl				; adres do znalezienia w DE
+		ld	b,0					; licznik C char'ow
+		ld	hl,MAP
+_not_this:
+		ld	a,(hl)	
+		cp	c
+		jr	z,_maybe_this
+		inc	hl
+		jr	_not_this	
+_maybe_this:
+		ld	a,e
+		cp	l
+		jr	z,_check_msb
+		inc hl
+		inc	b					; char ten, ale nie ten adres
+		jr _not_this			; jednak nie
+_check_msb:
+		ld	a,d
+		cp	h
+		jr	z,_this_one
+		inc	hl
+		inc	b					; char ten, ale nie ten adres
+		jr _not_this			; no nie
+_this_one:
+		ret
+
+; -----------------------------------------
+; Ustawia bit flagi przypisany do nr drzwi 
+; OUT:	A - ustawiony odpowiedni bit flagi 
+;		C - bajt flagi kluczy
+;		DE - adres bajtu flagi kluczy
+; -----------------------------------------
+door_keybit:
+		ld	a,(door_nr)
+		ld	b,a					; save nr
+		ld	de,bag.keys
+		cp	8
+		jr	c,_low_flags
+		;high flags
+		inc	de
+		sub	8
+_low_flags:
+		ld	a,(de)					; hl zajete wyzej
+		ld	c,a
+		ld	a,%00000001
+_roll_right:
+		rrca
+		djnz	_roll_right
+		ret
+
+;------------------------------------------------
+; Przeszukuje po offsecie liste wszystkich drzwi
+; i drukuje nr na drzwiach przed Hero
+; IN:  DE - offset drzwi ( wzgl. map )
+; USED : A, BC, HL
+;------------------------------------------------
+room_label:
+		ld	b,OBJ_MAX
+		ld	hl,doors
+		call	check_offset16
+		inc	a
+		ld	(door_nr),a
+		call	h2asci			; zamiana na ascii do druku
+		ld	hl,msg_door_nr
+		ld	(hl),c
+		inc	hl
+		ld	(hl),b
+		ret
+		
 ;------------------------------------------------------------------
 ; szuka 16-bitowego offsetu na liscie objektow 
 ; IN:	DE - offset do wyszukania
 ; 	HL - adres listy offsetow objektow ( H - msb )
-; OUT:	B - jesli FFh = nie znaleziony offset
+; OUT:	A  - jesli FFh = nie znaleziony offset
 ;	, w przeciwnym razie index znalezionego objektu na liscie ( od 0 )
 ; USED:	A, C, HL
 ;------------------------------------------------------------------
 check_offset16:
 		ld	c,b		; save licznik objektow
 		ld	a,e
-cell:
+_cell:
 		cp	(hl)
 		inc	hl
-		jr	nz,msb
+		jr	nz,_msb
 		ld	a,d
 		cp	(hl)
-		jr	nz,lsb
+		jr	nz,_lsb
 		jr	_finded
-lsb:
+_lsb:
 		ld	a,e
-msb:
+_msb:
 		inc	hl
-		djnz	cell	
-		ld	b,0FFh
+		djnz	_cell	
+		ld	a,0FFh
 		ret
 _finded:	
 		ld	a,c		; restore
-		sub	b
-		ld	b,a		; index znalezionego objekty ( od 0 )
-		ld	(hl),0	; zeruje ten ofset na liscie
-		dec	hl		; nieodkrytych przejsc
-		ld	(hl),0
+		sub	b		; index znalezionego objekty ( od 0 )
 		ret	
 		
 ;------------------------	
 ; Wyjscie
 ;------------------------
 _halt:
-			clear_screen
-exit:		ret
+		ei
+		ret
+
 ;--------------------------
 
 		include screen.asm
@@ -517,34 +701,32 @@ exit:		ret
 
 ;=========     D A T A     =========
 
-;------ map -----------
-map_height	db	12
-map_width	db	32	
-;---- windows ---------
-;map_position	db	 0,0	; wzgl lew-gorn rogu terminala	
-w3d_position	db	1,17	; X, Y 
-; -------------------------------------
-borders			ds	4		; Ymin, Ymax, Xmin, Xmax 
+map	Map	{ 32, 12 }
+
 message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
+
 ;------ hero ----------
-hero_mapYX
-hero_mapX	db	2
-hero_mapY	db	2	
-hero_d		db	1						; zwrot : 0 - N, 1 - E itd
-hero_o		ds	2						; 16-bit offset wzgl .MAP
+hero		Player	{ 2, 2, 1, $00 }
 hero_i		db	'^','>','v','<'			; ikony Hero
-hero_a		db	0						; kolory ( atrybut )
-;hero_m		db	0						; pamiec atrybutu
-;hero_s		db	-1,0, 0,1, 1,0, 0,-1	; przesuniecie wspolrzednych
 hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
-;------ doors ---------
-doors		ds	OBJ_MAX * 3		; max 32 doors: ofs lsb, msb, flag (op / cl)
-passages	ds	OBJ_MAX * 2		; max 32 passages: ofs lsb, msb
-;door_before	db	0				; numer drzwi na ktore patrzy Hero
-;- tabela adresow poczatkow lini 'tekstowych' -----
+
+; ------- Inventory ------------------------------
+bag			Inventory { %10000100, %10000000 }
+
+;------ doors & passages --------
+doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
+passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
+door_nr		db	0				; numer drzwi na ktore patrzy Hero
+
+;==================
 
 		include	messages.asm
 		include map.asm
 
-		end	Start
+;==================
+
+End:
+
+    ; drugi blok (CODE) na tasme
+    SAVETAP "dng.tap", CODE, "Dungeology", Start, End - Start
