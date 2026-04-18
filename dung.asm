@@ -80,6 +80,8 @@ FLOOR_CHAR		equ	' '
 C_DOOR_CHAR		equ	'+'
 O_DOOR_CHAR		equ	'/'
 KEY_CHAR		equ	'~'
+WEAPON_CHAR		equ	'('
+ARMOUR_CHAR		equ	'['
 PASSAGE_CHAR	equ	'='
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
@@ -401,7 +403,9 @@ open_door:
 _no_key:
 		PRINT_STR	MSG_LINE2 + $A, msg_nokey
 		jp	wait_release	
-close_door:	ld	(hl),C_DOOR_CHAR		
+close_door:
+		ld	(hl),C_DOOR_CHAR		
+		ld	a,(door_nr)
 		call	remove_key
 		jp	refresh
 
@@ -520,10 +524,13 @@ take_item:
 		call	search_floor
 		ld	a,c
 		cp	KEY_CHAR
-		jr	nz,_floor_empty 
-		call	take_key
-		jp	wait_release
-_floor_empty:
+		jp	z,take_key
+		cp	WEAPON_CHAR
+		jp	z,take_weapon
+		cp	ARMOUR_CHAR
+		jp	z,take_armour
+
+		; jesli nic nie ma to komunikat ze nic nie ma
 		PRINT_STR	MSG_LINE1 + $9, msg_floor
 		PRINT_STR	MSG_LINE2 + $9, msg_dust
 		jp wait_release	
@@ -546,15 +553,19 @@ search_floor:
 ; OUT:	A = 0 nie ma klucza, A != 0 jest 
 ; --------------------------------------
 check_key:
-		call	door_keybit
+		ld	a,(door_nr)
+		ld	de,bag.keys
+		call	nr_to_bit
 		and	c
 		ret
 
 ; ----------------------------------------------------
 ; Wyjmuje klucz z otwartych drzwi i laduje do plecaka 
+; IN:	A - nr drzwi
 ; ----------------------------------------------------
 remove_key:
-		call	door_keybit
+		ld	de,bag.keys
+		call	nr_to_bit
 		or	c
 		ld	(de),a
 		ret
@@ -565,23 +576,53 @@ remove_key:
 ; ----------------------------------------------------
 take_key:
 		call	search_map
-		ld	(hl),FLOOR_CHAR
 		ld	hl,key_door_nr
-		ld	d,0
-		ld	e,b
 		add	hl,de
 		ld	a,(hl)
-		ld	(door_nr),a
 		call	remove_key
 		PRINT_STR	MSG_LINE1 + $9, msg_floor
 		PRINT_STR	MSG_LINE2 + $9, msg_key
-		ret
+		jp	wait_release
+
+; ----------------------------------------------------
+; Podnosi bron z gleby i laduje do plecaka 
+; IN:	C - char broni
+; ----------------------------------------------------
+take_weapon:
+		call	search_map
+		ld	hl,weapon_pow
+		add	hl,de
+		ld	a,(hl)
+		ld	de,bag.weapons
+		call	nr_to_bit
+		or	c
+		ld	(de),a
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_weapon
+		jp	wait_release
+
+; ----------------------------------------------------
+; Podnosi zbroje z gleby i laduje do plecaka 
+; IN:	C - char zbroi 
+; ----------------------------------------------------
+take_armour:
+		call	search_map
+		ld	hl,armour_pow
+		add	hl,de
+		ld	a,(hl)
+		ld	de,bag.armours
+		call	nr_to_bit
+		or	c
+		ld	(de),a
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE2 + $9, msg_armour
+		jp	wait_release
 
 ; ----------------------------------------------------
 ; Przeszukuje mape w poszukiwaniu char'a
 ; IN:	C - char do znalezienia
 ;		HL - adres do sprawdzenia
-; OUT:	B	- ktory w kolejnosci na MAP'e	
+; OUT:	B, DE	- ktory w kolejnosci na MAP'e	
 ; ----------------------------------------------------
 search_map:
 		ex	de,hl				; adres do znalezienia w DE
@@ -608,24 +649,25 @@ _check_msb:
 		inc	b					; char ten, ale nie ten adres
 		jr _not_this			; no nie
 _this_one:
+		ld	(hl),FLOOR_CHAR		; wziety z gleby
+		ld	d,0
+		ld	e,b
 		ret
 
-; -----------------------------------------
-; Ustawia bit flagi przypisany do nr drzwi 
+; -------------------------------------------------------------------
+; Zamienia liczbe z zakresu 1-16 na slowo z ustawionym bitem od 1-16
+; IN:	A - liczba 1 - 16
+;		DE - adres slowa flag
 ; OUT:	A - ustawiony odpowiedni bit flagi 
-;		C - bajt flagi kluczy
-;		DE - adres bajtu flagi kluczy
-; -----------------------------------------
-door_keybit:
-		ld	a,(door_nr)
-		ld	b,a					; save nr
-		ld	de,bag.keys
+;		C - odpowiedni bajt flagi
+; -------------------------------------------------------------------
+nr_to_bit:
 		cp	8
 		jr	c,_low_flags
-		;high flags
 		inc	de
 		sub	8
 _low_flags:
+		ld	b,a						; ile razy przesuwka 
 		ld	a,(de)					; hl zajete wyzej
 		ld	c,a
 		ld	a,%00000001
@@ -634,18 +676,19 @@ _roll_right:
 		djnz	_roll_right
 		ret
 
-;------------------------------------------------
+		
+;-------------------------------------------------------
 ; Przeszukuje po offsecie liste wszystkich drzwi
-; i drukuje nr na drzwiach przed Hero
+; Drukuje nr na drzwiach przed Hero i wbija do zmiennej
 ; IN:  DE - offset drzwi ( wzgl. map )
 ; USED : A, BC, HL
-;------------------------------------------------
+;-------------------------------------------------------
 room_label:
 		ld	b,OBJ_MAX
 		ld	hl,doors
 		call	check_offset16
 		inc	a
-		ld	(door_nr),a
+		ld	(door_nr),a			; do zmiennej
 		call	h2asci			; zamiana na ascii do druku
 		ld	hl,msg_door_nr
 		ld	(hl),c
@@ -712,7 +755,9 @@ hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
 
 ; ------- Inventory ------------------------------
-bag			Inventory { %10000100, %10000000 }
+bag			Inventory { %10100100, %10000000,			; klucze
+						%00000000, %00000000,			; bronie
+						%00000000, %00000000 }			; zbroje
 
 ;------ doors & passages --------
 doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb

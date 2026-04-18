@@ -11,10 +11,10 @@ wall_tiles
 	db	$EF, $EF, $EF, $EF, $EF, $EF, $EF, $EF
 	db	$29, $FF, $FF, $FE, $FF, $FF, $FF, $FF
 
-	db	$FF, $F8, $8F, $6F, $EF, $EF, $EF, $EF			
+	db	$FF, $F8, $8F, $6F, $EF, $EF, $EF, $EF
 	db	$EF, $EC, $F0, $C0, $00, $00, $00, $00
 	db	$00, $00, $00, $00, $00, $01, $07, $1F
-	db	$7F, $7F, $7F, $7F, $7F, $7F, $78, $4B 
+	db	$7F, $7F, $7F, $7F, $7F, $7F, $78, $4B
 
 	db	$7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B
 	db	$00, $7F, $7F, $7F, $7F, $7F, $7F, $7F

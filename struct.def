@@ -8,6 +8,8 @@ offset			dw
 ; ----------------------------
 	STRUCT	Inventory
 keys			db : db			; 2 bajtowe pole flag, klucz nr 1 = 7 bit lsb
+weapons			db : db			; jw. ale bronie
+armours			db : db			; jw. ale zbroje
 	ENDS
 
 ; ----------------------------
