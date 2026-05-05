@@ -1,0 +1,72 @@
+;=========     V A R I A B L E S     =========
+
+map	Map	{ 32, 12, $0000 }
+
+message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
+
+;------ hero ----------
+hero			Character	{
+				2, 2, 1, $00,				; pozycja i offset 
+				16, 10, 8,					; stats
+				0,							; bron	
+				0,							; zbroja	
+				%10100100, %10000000		; klucze
+							 }
+; ------- Statyczne -----------------
+hero_i			db	'^','>','v','<'			; ikony Hero
+hero_s			db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
+neighbor_offs:	db	0,1,0,-1
+
+; ------- Inventory ------------------------------
+stat_info:
+			db	" HP:00$"
+			db	"STR:00$"
+			db	"DEF:00$"
+__1st		db	"WEP:   $"
+			db	"AMR:   $"
+__lst
+
+LABELS_NUMBER	equ		( __lst - __1st ) / 8
+
+; ------- Weapons & Armour names ---------------
+weapon_names:
+			db	"HND"			; Hands
+			db	"TRO"			; Hand Trowel
+			db	"SHE"			; Pruning Shears
+			db	"WEE"			; Garden Weeder
+			db	"HRA"			; Hand Rake
+			db	"SIC"			; Sickle
+			db	"TRI"			; Hedge Trimmers
+			db	"LOP"			; Loppers
+			db	"HOE"			; Garden Hoe
+			db	"PIT"			; Pitchfork
+			db	"GRA"			; Garden Rake
+			db	"SPA"			; Spade
+			db	"SHO"			; Shovel
+			db	"PIC"			; Pickaxe
+			db	"MAC"			; Machete
+			db	"AXE"			; Axe
+			db	"CHA"			; Chainsaw
+armour_names:
+			db	"SKN"			; Skin
+			db	"GLO"			; Thick Leather Gloves			 
+			db	"SAC"			; Burlap Sack
+			db	"FLA"			; Heavy Flannel Shirt
+			db	"STR"			; Straw Bale (Shielding)
+			db	"TAR"			; Canvas Tarpaulin
+			db	"HID"			; Cured Animal Hide
+			db	"WAD"			; Rubber Waders
+			db	"BAS"			; Woven Wicker Basket
+			db	"BAR"			; Tree Bark Bracers
+			db	"FEN"			; Wooden Fence Picket
+			db	"MET"			; Shield Metal Scrap
+			db	"BUC"			; Steel Bucket (Helmet)
+			db	"TIR"			; Tractor Tire Rubber
+			db	"BAR"			; Large Plastic Barrel
+			db	"LID"			; Steel Dustbin Lid
+			db	"GRA"			; Heavy Iron Grate
+
+;------ doors & passages --------
+doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
+passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
+door_nr		db	0				; numer drzwi na ktore patrzy Hero

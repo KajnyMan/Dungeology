@@ -90,3 +90,30 @@ ascii2num:
 		add	a,c			; dziesietne + jednoscioci
 		inc	hl
 		ret
+; -------------------------------------------------------------------
+; Zamienia liczbe z zakresu 1-16 na slowo z ustawionym bitem od 1-16
+; IN:	A - liczba 1 - 16
+;		DE - adres slowa flag
+; OUT:	A - ustawiony odpowiedni bit flagi 
+;		C - odpowiedni bajt flagi
+; -------------------------------------------------------------------
+nr_to_bit:
+		cp	8
+		jr	c,_low_flags
+		inc	de
+		sub	8
+_low_flags:
+		ld	b,a						; ile razy przesuwka 
+		ld	a,(de)					; hl zajete wyzej
+		ld	c,a
+		ld	a,%00000001
+_roll_right:
+		rrca
+		djnz	_roll_right
+		ret
+
+; -------------------------------------------------------------------
+; Zamienia slowo z ustawionym bitem od 1-16 na liczbe z zakresu 1-16 
+; IN:	DE - adres slowa flag
+; OUT:	C - liczba od 1 do 16 
+; -------------------------------------------------------------------

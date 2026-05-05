@@ -1,16 +1,29 @@
-	STRUCT	Player
-mapY			db
-mapX			db
-direction		db
-offset			dw
+	STRUCT	Stat
+hp				db	16	
+str				db	10	
+def				db	8
 	ENDS
 
 ; ----------------------------
 	STRUCT	Inventory
+weapon			db
+armour			db
 keys			db : db			; 2 bajtowe pole flag, klucz nr 1 = 7 bit lsb
-weapons			db : db			; jw. ale bronie
-armours			db : db			; jw. ale zbroje
 	ENDS
+
+; ----------------------------
+	STRUCT	Character
+mapY			db
+mapX			db
+direction		db
+offset			dw
+stat			Stat
+bag				Inventory
+	ENDS
+
+; ----------------------------
+;	STRUCT	Attribute
+;	ENDS
 
 ; ----------------------------
 	STRUCT	Map

@@ -1,0 +1,131 @@
+; rozmieszczenie elementow ekranu ( od tego liczona jest reszta )
+FOV_Y			equ 2
+FOV_X			equ 11
+MSG_Y			equ	13
+MSG_X			equ	7
+W3D_Y			equ	17
+W3D_X			equ	11
+INF_Y			equ	FOV_Y
+INF_X			equ	FOV_X + FOV_WIDTH + 2
+
+; atrybuty
+BLACK			equ	0
+BLUE			equ	1
+RED				equ	2
+PURPLE			equ	3
+GREEN			equ	4
+CYAN			equ	5
+YELLOW			equ	6
+WHITE			equ	7
+BLACK_BGD		equ	0
+BLUE_BGD		equ	8
+RED_BGD			equ	16
+PURPLE_BGD		equ	24	
+GREEN_BGD		equ	32	
+CYAN_BGD		equ	40
+YELLOW_BGD		equ	48
+WHITE_BGD		equ	56
+BRIGHT			equ	64
+FLASH			equ	128
+WALL3D_ATR		equ BLACK_BGD OR BLUE OR BRIGHT
+C_DOOR3D_ATR	equ	BLACK_BGD OR RED
+O_DOOR3D_ATR	equ	BLACK_BGD OR RED
+SCREEN_WIDTH	equ	32
+
+	; klawiatura
+CS_V			equ	$FE
+A_G				equ	$FD
+Q_T				equ	$FB
+Num1_5			equ	$F7
+Num0_6			equ	$EF
+P_Y				equ	$DF
+Enter_H			equ	$BF
+Space_B			equ	$7F
+	; mapa i hero
+FOV_YX			equ	( FOV_Y * 256 ) + FOV_X 
+FOV_WIDTH		equ 9
+FOV_HEIGHT		equ 9
+FOV_FRAME_Y		equ	FOV_Y - 1	
+FOV_FRAME_X		equ	FOV_X - 1	
+FOV_FRAME_YX	equ	( FOV_FRAME_Y * 256 ) + FOV_FRAME_X	
+FOV_FRAME_H		equ	FOV_HEIGHT + 2		
+FOV_FRAME_W		equ	FOV_WIDTH + 2		
+FFY				equ	FOV_FRAME_Y
+FFX				equ	FOV_FRAME_X
+FFW				equ	FOV_WIDTH + 1
+FFH				equ FOV_HEIGHT + 1
+W3D_HEIGHT		equ	6
+W3D_WIDTH		equ	9
+W3D_YX			equ	( W3D_Y * 256 ) + W3D_X 
+W3D_FRAME_Y		equ	W3D_Y - 1	
+W3D_FRAME_X		equ	W3D_X - 1	
+W3D_FRAME_YX	equ	( W3D_FRAME_Y * 256 ) + W3D_FRAME_X	
+W3D_FRAME_H		equ	W3D_HEIGHT + 2		
+W3D_FRAME_W		equ	W3D_WIDTH + 2		
+F3Y				equ	W3D_FRAME_Y
+F3X				equ	W3D_FRAME_X
+F3W				equ	W3D_WIDTH + 1
+F3H				equ W3D_HEIGHT + 1
+MSG_YX			equ	( MSG_Y * 256 ) + MSG_X
+MSG_WIDTH		equ 17
+MSG_HEIGHT		equ 2
+INF_WIDTH		equ 9
+INF_HEIGHT		equ	9
+INF_YX			equ	( INF_Y * 256 ) + INF_X 
+WALL_CHAR		equ	'#'
+PREV_WALL		equ	'.'
+FLOOR_CHAR		equ	' '
+C_DOOR_CHAR		equ	'+'
+O_DOOR_CHAR		equ	'/'
+KEY_CHAR		equ	'~'
+WEAPON_CHAR		equ	'('
+ARMOUR_CHAR		equ	'['
+PASSAGE_CHAR	equ	'='
+STRING_DELIM	equ	'$'
+TILE_EOL		equ $FF
+DELIM			equ	0FFh
+OBJ_MAX			equ	16
+HERO_Y			equ	FOV_Y + 4
+HERO_X			equ FOV_X + 4 	
+HERO_ATR		equ BLACK_BGD OR YELLOW
+HERO_YX			equ ( HERO_Y * 256 ) + HERO_X 
+NORTH			equ	0
+EAST			equ	1
+SOUTH			equ	2
+WEST			equ	3
+
+	; adresy stale
+FONTS			equ	$3D00	
+SCREEN			equ	$4000
+SCR2			equ	$4800
+SCREEN_TOP		equ	$5800
+SCREEN_ATR		equ	$5800
+ATR3			equ	$5A00
+MSG_AREA		equ $4888	; linie 96-127
+MSG_LINE1		equ	$48A0
+MSG_LINE2		equ	$48C0
+SCR3			equ	$5000
+ATR_MAP_TOP		equ	$5980
+ATR_MSG_TOP 	equ	$5A00
+ATR_3D_TOP		equ	$5B00
+PRINTER_BUF		equ $5B00
+FONTS_MSB		equ $3D
+SCR1_MSB		equ $40
+SCR2_MSB		equ $48
+SCR3_MSB		equ $50
+ATR_MSB			equ	$58
+ATR1_MSB		equ	$58
+ATR2_MSB		equ	$59
+ATR3_MSB		equ	$5A
+
+	; adresy ruchome
+FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
+W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X	
+MSG_ADR			equ	SCR2 + ( ( MSG_Y - $08 ) * $20 ) + MSG_X 
+INF_ADR			equ	FOV_ADR + FOV_WIDTH + 2
+ATR3_BUF		equ	$F000
+ATR3_BUF_MSB	equ	$F0
+TILES			equ	$8000
+TILES_MSB		equ $80
+GAME_START		equ	$8400
+

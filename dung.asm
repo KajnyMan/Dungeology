@@ -4,275 +4,24 @@
 
 	DEVICE	ZXSPECTRUM48
 	EMPTYTAP "dng.tap"
-
-; rozmieszczenie elementow ekranu ( od tego liczona jest reszta )
-FOV_Y			equ 2
-FOV_X			equ 11
-MSG_Y			equ	13
-MSG_X			equ	7
-W3D_Y			equ	17
-W3D_X			equ	11
-
-; atrybuty
-BLACK			equ	0
-BLUE			equ	1
-RED				equ	2
-PURPLE			equ	3
-GREEN			equ	4
-CYAN			equ	5
-YELLOW			equ	6
-WHITE			equ	7
-BLACK_BGD		equ	0
-BLUE_BGD		equ	8
-RED_BGD			equ	16
-PURPLE_BGD		equ	24	
-GREEN_BGD		equ	32	
-CYAN_BGD		equ	40
-YELLOW_BGD		equ	48
-WHITE_BGD		equ	56
-BRIGHT			equ	64
-FLASH			equ	128
-WALL3D_ATR		equ BLACK_BGD OR BLUE OR BRIGHT
-C_DOOR3D_ATR	equ	BLACK_BGD OR RED
-O_DOOR3D_ATR	equ	BLACK_BGD OR RED
-SCREEN_WIDTH	equ	32
-
-	; klawiatura
-CS_V			equ	$FE
-A_G				equ	$FD
-Q_T				equ	$FB
-Num1_5			equ	$F7
-Num0_6			equ	$EF
-P_Y				equ	$DF
-Enter_H			equ	$BF
-Space_B			equ	$7F
-	; mapa i hero
-FOV_YX			equ	( FOV_Y * 256 ) + FOV_X 
-FOV_WIDTH		equ 9
-FOV_HEIGHT		equ 9
-FOV_FRAME_Y		equ	FOV_Y - 1	
-FOV_FRAME_X		equ	FOV_X - 1	
-FOV_FRAME_YX	equ	( FOV_FRAME_Y * 256 ) + FOV_FRAME_X	
-FOV_FRAME_H		equ	FOV_HEIGHT + 2		
-FOV_FRAME_W		equ	FOV_WIDTH + 2		
-FFY				equ	FOV_FRAME_Y
-FFX				equ	FOV_FRAME_X
-FFW				equ	FOV_WIDTH + 1
-FFH				equ FOV_HEIGHT + 1
-W3D_HEIGHT		equ	6
-W3D_WIDTH		equ	9
-W3D_YX			equ	( W3D_Y * 256 ) + W3D_X 
-W3D_FRAME_Y		equ	W3D_Y - 1	
-W3D_FRAME_X		equ	W3D_X - 1	
-W3D_FRAME_YX	equ	( W3D_FRAME_Y * 256 ) + W3D_FRAME_X	
-W3D_FRAME_H		equ	W3D_HEIGHT + 2		
-W3D_FRAME_W		equ	W3D_WIDTH + 2		
-F3Y				equ	W3D_FRAME_Y
-F3X				equ	W3D_FRAME_X
-F3W				equ	W3D_WIDTH + 1
-F3H				equ W3D_HEIGHT + 1
-MSG_YX			equ	( MSG_Y * 256 ) + MSG_X
-MSG_WIDTH		equ 17
-MSG_HEIGHT		equ 2
-WALL_CHAR		equ	'#'
-PREV_WALL		equ	'.'
-FLOOR_CHAR		equ	' '
-C_DOOR_CHAR		equ	'+'
-O_DOOR_CHAR		equ	'/'
-KEY_CHAR		equ	'~'
-WEAPON_CHAR		equ	'('
-ARMOUR_CHAR		equ	'['
-PASSAGE_CHAR	equ	'='
-STRING_DELIM	equ	'$'
-TILE_EOL		equ $FF
-DELIM			equ	0FFh
-OBJ_MAX			equ	16
-HERO_Y			equ	FOV_Y + 4
-HERO_X			equ FOV_X + 4 	
-HERO_ATR		equ BLACK_BGD OR YELLOW
-HERO_YX			equ ( HERO_Y * 256 ) + HERO_X 
-NORTH			equ	0
-EAST			equ	1
-SOUTH			equ	2
-WEST			equ	3
-
-	; adresy stale
-FONTS			equ	$3D00	
-SCREEN			equ	$4000
-SCR2			equ	$4800
-SCREEN_TOP		equ	$5800
-SCREEN_ATR		equ	$5800
-ATR3			equ	$5A00
-MSG_AREA		equ $4888	; linie 96-127
-MSG_LINE1		equ	$48A0
-MSG_LINE2		equ	$48C0
-SCR3			equ	$5000
-ATR_MAP_TOP		equ	$5980
-ATR_MSG_TOP 	equ	$5A00
-ATR_3D_TOP		equ	$5B00
-PRINTER_BUF		equ $5B00
-FONTS_MSB		equ $3D
-SCR1_MSB		equ $40
-SCR2_MSB		equ $48
-SCR3_MSB		equ $50
-ATR_MSB			equ	$58
-ATR1_MSB		equ	$58
-ATR2_MSB		equ	$59
-ATR3_MSB		equ	$5A
-
-	; adresy ruchome
-FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
-W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X	
-MSG_ADR			equ	SCR2 + ( ( MSG_Y - $08 ) * $20 ) + MSG_X 
-ATR3_BUF		equ	$F000
-ATR3_BUF_MSB	equ	$F0
-TILES			equ	$8000
-TILES_MSB		equ $80
-GAME_START		equ	$8400
-
 		
 		include	struct.def
-		include	macro.asm
+		include	macro.def
+		include	const.def
+		include	loader.asm
 
-; ----------------
-;  Basic Loader
-; ----------------
-		org	PRINTER_BUF
-BasicStart:
-    db 0, 10            ; Numer linii
-    dw _b_end - _b_line   ; Dlugosc linii
-_b_line:
-    db $FD              ; CLEAR
-    ; "00000" jako tekst, potem $0E i 5 bajtow (format Sinclaira dla 32767)
-    db "00000", $0E, 0, 0, $FF, $7F, 0 
-    db ":"
-    db $EF, $22, $22, $AF ; LOAD "" CODE
-    db ":"
-    db $F9, $C0         ; RANDOMIZE USR
-    ; "32768" jako tekst, potem $0E i 5 bajtow (format Sinclaira dla 32768)
-    db "00000", $0E, 0, 0, low CodeStart, high CodeStart, 0
-    db $0D              ; Enter
-_b_end:
-
-    ; pierwszy blok (BASIC) na tasme
-    SAVETAP "dng.tap", BASIC, "Loader", BasicStart, _b_end - BasicStart, 10
-; -----------------
-; Kafelki
-; -----------------
 		org	TILES
+
 Start:
-		include tiles.asm
+		include tiles.dat
 
 ; ================
-;  Start Programu
+;  Code Start
 ; ================
 CodeStart:
 		di
 		
-;============== D A T A     I N I T ===================
-		BORDER_COLOR BLACK
-		SET_COLOR	BLACK_BGD OR BLACK, ATR_3D_TOP, 24
-		CLEAR_LINES SCREEN_TOP, 191
-		call	print_frames
-
-		; kolory okna powiadomien
-		ld	a,YELLOW_BGD OR BLACK 
-		ld	b,MSG_HEIGHT
-		ld	c,MSG_WIDTH
-		ld	de,MSG_YX
-		call set_atr_block
-
-		; kolory ramki mapy
-		ld	a,BLACK_BGD OR GREEN 
-		ld	b,FOV_FRAME_H
-		ld	c,FOV_FRAME_W
-		ld	de,FOV_FRAME_YX
-		call set_atr_block
-
-;		; kolory ramki	3D 
-		ld	a,BLACK_BGD OR PURPLE 
-		ld	b,W3D_FRAME_H
-		ld	c,W3D_FRAME_W
-		ld	de,W3D_FRAME_YX
-		call set_atr_block
-
-		; kolory okna mapy
-		ld	a,BLACK_BGD OR RED 
-		ld	b,FOV_HEIGHT
-		ld	c,FOV_WIDTH
-		ld	de,FOV_YX
-		call set_atr_block
-		
-; ------ Oblicza rozmiar mapy --------
-		ld	hl,(map.width)
-		ld	b,h
-		ld	c,l
-		call	mul8
-		ld	(map.size),hl	
-
-; ------ Czyta MAPe i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
-		ld	ix,doors
-		ld	iy,passages
-		ld	hl,MAP
-		ld	de,0				; offset obiektow
-		ld	bc,(map.size)
-_next_mapchar:
-		ld	a,(hl)
-		cp	C_DOOR_CHAR	
-		jr	z,_init_door
-		cp	O_DOOR_CHAR	
-		jr	z,_init_door
-		cp	PASSAGE_CHAR
-		jr	nz,_inc_counters
-		; --- ukryte przejscia ----
-		ld	(iy),e
-		ld	(iy+1),d
-		inc	iy
-		inc	iy
-		ld	(hl),WALL_CHAR
-		jr	_inc_counters
-		; ---	drzwi   --- 
-		; 0 - MAP Ofs lsb, 1 - msb, 2 - open(0), close(1)
-_init_door:
-		ld	(ix),e				; offset obiektu lsb
-		ld	(ix+1),d			; msb
-		inc	ix
-		inc	ix
-		; -----------------
-_inc_counters:
-		inc	hl
-		inc	de
-		dec	bc	
-		ld	a,b
-		or	c
-		jr	nz,_next_mapchar
-
-; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
-		ld	a,(hero.mapY)
-		ld	c,a
-		ld	a,(map.width)
-		ld	b,a
-		call	mul8
-		ld	a,(hero.mapX)
-		ld	d,0
-		ld	e,a
-		add	hl,de	
-		ld	(hero.offset),hl
-
-
-; Oblicza i wypelnia tabele neighbor_offs
-		ld	ix,neighbor_offs
-		ld	a,(map.width)
-		ld	(ix+2),a
-		neg
-		ld	(ix),a
-		
-; Oblicza i wypelnia tabele fov_offsets
-; W zaleznosci od kierunku patrzenia kazde tile w polu widzenia
-; dostanie swoj offset wzgledem Hero
-		call	calc_fov	
-		
-;	Rysuje ramki okien fov i w3d
+		include	init.asm
 		
 ; ===============  M A I N    L O O P =================
 
@@ -288,7 +37,7 @@ refresh:
 		ld	hl,W3D_ADR
 		ld	b,W3D_HEIGHT
 		call	clear_txtlines
-_begin:
+_begin
 		; "wygaszone" okno 3D przy rysowaniu
 		ld	a,BLACK_BGD OR BLACK
 		ld	b,W3D_HEIGHT
@@ -386,7 +135,7 @@ move_door:
 		cp	O_DOOR_CHAR	
 		jr	z,_print_door_nr
 		jp	key_press			; nie ma tutaj drzwi! Wypad
-_print_door_nr:
+_print_door_nr
 		push	hl				; save adresu drzwi
 		call	room_label
 		PRINT_STR	MSG_LINE1 + $A, msg_door
@@ -400,44 +149,13 @@ open_door:
 		jr	z,_no_key
 		ld	(hl),O_DOOR_CHAR		
 		jp	refresh
-_no_key:
+_no_key
 		PRINT_STR	MSG_LINE2 + $A, msg_nokey
 		jp	wait_release	
 close_door:
 		ld	(hl),C_DOOR_CHAR		
 		ld	a,(door_nr)
 		call	remove_key
-		jp	refresh
-
-; ---------------------------------------------------------------
-; Jesli bylo powiadomienie w poprzednim ruchu - trzeba wyczyscic
-; ---------------------------------------------------------------
-message_area_clear:
-		ld	a,(message_flag)
-		or	a
-		ret	z	
-
-		ld	hl,MSG_ADR				; blok lewy
-		ld	b,2
-		call	clear_txtlines
-
-		ld	hl,MSG_ADR + 8			; prawy
-		ld	b,2
-		call	clear_txtlines
-
-		xor	a
-		ld	(message_flag),a
-		ret
-		
-; Sprawdza czy ruch jest mozliwy
-ismove:	
-		call	right_before
-		cp	WALL_CHAR
-		jp	z,key_press
-		cp	C_DOOR_CHAR		
-		jp	z,key_press
-		call	move
-		call	message_area_clear
 		jp	refresh
 
 ;-------------------------------------------------
@@ -476,7 +194,7 @@ right_before:
 		bit	7,e
 		jr	z,_addit
 		ld	d,0FFh
-_addit:	ld	hl,(hero.offset)
+_addit	ld	hl,(hero.offset)
 		add	hl,de	
 		ex	de,hl		; offset Tile wzgl mapy 
 		ld	hl,MAP
@@ -512,7 +230,7 @@ search:
 		PRINT_STR	MSG_LINE2 + $8, msg_psgfinded
 		jp	refresh
 
-_nothing_here:
+_nothing_here
 		PRINT_STR	MSG_LINE2 + $8, msg_nothing
 		jp	wait_release
 
@@ -521,6 +239,7 @@ _nothing_here:
 ; ----------------------------------------------------
 take_item:
 		call	message_area_clear
+		PRINT_STR	MSG_LINE1 + $9, msg_floor
 		call	search_floor
 		ld	a,c
 		cp	KEY_CHAR
@@ -531,7 +250,6 @@ take_item:
 		jp	z,take_armour
 
 		; jesli nic nie ma to komunikat ze nic nie ma
-		PRINT_STR	MSG_LINE1 + $9, msg_floor
 		PRINT_STR	MSG_LINE2 + $9, msg_dust
 		jp wait_release	
 
@@ -554,7 +272,7 @@ search_floor:
 ; --------------------------------------
 check_key:
 		ld	a,(door_nr)
-		ld	de,bag.keys
+		ld	de,hero.bag.keys
 		call	nr_to_bit
 		and	c
 		ret
@@ -564,7 +282,7 @@ check_key:
 ; IN:	A - nr drzwi
 ; ----------------------------------------------------
 remove_key:
-		ld	de,bag.keys
+		ld	de,hero.bag.keys
 		call	nr_to_bit
 		or	c
 		ld	(de),a
@@ -580,7 +298,6 @@ take_key:
 		add	hl,de
 		ld	a,(hl)
 		call	remove_key
-		PRINT_STR	MSG_LINE1 + $9, msg_floor
 		PRINT_STR	MSG_LINE2 + $9, msg_key
 		jp	wait_release
 
@@ -593,12 +310,11 @@ take_weapon:
 		ld	hl,weapon_pow
 		add	hl,de
 		ld	a,(hl)
-		ld	de,bag.weapons
-		call	nr_to_bit
-		or	c
-		ld	(de),a
-		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		ld	(hero.bag.weapon),a
 		PRINT_STR	MSG_LINE2 + $9, msg_weapon
+		ld	hl,hero.bag.weapon
+		ld	de,hero.stat.str
+		call	equip
 		jp	wait_release
 
 ; ----------------------------------------------------
@@ -610,13 +326,26 @@ take_armour:
 		ld	hl,armour_pow
 		add	hl,de
 		ld	a,(hl)
-		ld	de,bag.armours
-		call	nr_to_bit
-		or	c
-		ld	(de),a
-		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		ld	(hero.bag.armour),a
+		ld	hl,hero.bag.armour
+		ld	de,hero.stat.def
+		call	equip
 		PRINT_STR	MSG_LINE2 + $9, msg_armour
 		jp	wait_release
+
+; ----------------------------------------------------
+; Wyciaga item z plecaka celem uzywania
+; IN:	HL - adres item w plecaku
+;		DE - adres statystyki, na ktora wplywa
+; ----------------------------------------------------
+equip:
+		ld	c,(hl)
+		ld	a,(de)
+		add	a,c
+		ld	(de),a
+		call	update_stat_strings 
+		call	print_stat_info
+		ret
 
 ; ----------------------------------------------------
 ; Przeszukuje mape w poszukiwaniu char'a
@@ -628,55 +357,32 @@ search_map:
 		ex	de,hl				; adres do znalezienia w DE
 		ld	b,0					; licznik C char'ow
 		ld	hl,MAP
-_not_this:
+_not_this
 		ld	a,(hl)	
 		cp	c
 		jr	z,_maybe_this
 		inc	hl
 		jr	_not_this	
-_maybe_this:
+_maybe_this
 		ld	a,e
 		cp	l
 		jr	z,_check_msb
 		inc hl
 		inc	b					; char ten, ale nie ten adres
 		jr _not_this			; jednak nie
-_check_msb:
+_check_msb
 		ld	a,d
 		cp	h
 		jr	z,_this_one
 		inc	hl
 		inc	b					; char ten, ale nie ten adres
 		jr _not_this			; no nie
-_this_one:
+_this_one
 		ld	(hl),FLOOR_CHAR		; wziety z gleby
 		ld	d,0
 		ld	e,b
 		ret
 
-; -------------------------------------------------------------------
-; Zamienia liczbe z zakresu 1-16 na slowo z ustawionym bitem od 1-16
-; IN:	A - liczba 1 - 16
-;		DE - adres slowa flag
-; OUT:	A - ustawiony odpowiedni bit flagi 
-;		C - odpowiedni bajt flagi
-; -------------------------------------------------------------------
-nr_to_bit:
-		cp	8
-		jr	c,_low_flags
-		inc	de
-		sub	8
-_low_flags:
-		ld	b,a						; ile razy przesuwka 
-		ld	a,(de)					; hl zajete wyzej
-		ld	c,a
-		ld	a,%00000001
-_roll_right:
-		rrca
-		djnz	_roll_right
-		ret
-
-		
 ;-------------------------------------------------------
 ; Przeszukuje po offsecie liste wszystkich drzwi
 ; Drukuje nr na drzwiach przed Hero i wbija do zmiennej
@@ -707,7 +413,7 @@ room_label:
 check_offset16:
 		ld	c,b		; save licznik objektow
 		ld	a,e
-_cell:
+_cell
 		cp	(hl)
 		inc	hl
 		jr	nz,_msb
@@ -715,17 +421,90 @@ _cell:
 		cp	(hl)
 		jr	nz,_lsb
 		jr	_finded
-_lsb:
+_lsb
 		ld	a,e
-_msb:
+_msb
 		inc	hl
 		djnz	_cell	
 		ld	a,0FFh
 		ret
-_finded:	
+_finded	
 		ld	a,c		; restore
-		sub	b		; index znalezionego objekty ( od 0 )
+		sub	b		; index znalezionego objektu ( od 0 )
 		ret	
+;------------------------------------------------------
+; Wbija biezace statystyki hero do stringow stat_info
+; USED: wszystko
+;------------------------------------------------------
+update_stat_strings:
+		ld	hl,stat_info + 4
+		ld	de,hero.stat.hp
+		ld	b,3
+_nxt_stat
+		push	bc
+		ld	a,(de)	
+		call	h2asci
+		ld	(hl),c
+		inc	hl
+		ld	(hl),b
+		inc	de
+		ld	b,0
+		ld	c,6
+		add	hl,bc
+		pop		bc
+		djnz	_nxt_stat
+		; etykieta broni i zbroi
+		ld	b,LABELS_NUMBER
+		ld	a,(hero.bag.weapon)
+		ex	de,hl				; w DE miejsce w stringu
+		ld	hl,weapon_names
+
+_modify_string
+
+		push	bc
+
+		ld	b,a
+		add	a,a
+		add	a,b							; x3
+		ld	b,0
+		ld	c,a
+		add	hl,bc
+		ld	bc,3						; ( x3 litery )		
+		ldir
+
+		ld	a,(hero.bag.armour)
+		ld	hl,5
+		add	hl,de	
+		ex	de,hl
+		ld	hl,armour_names
+
+		pop		bc	
+
+		djnz	_modify_string
+
+		ret	
+;------------------------------------------------------
+; Drukuje statystyki 
+;------------------------------------------------------
+print_stat_info:
+		ld	bc,stat_info		
+		ld	de,INF_ADR
+		ld	h,5				;  ilosc etykiet
+_nxt_label
+		push	hl
+		push	de
+
+		call	pstring_global
+
+		inc	bc	
+		pop		de
+		ld	hl,32
+		add	hl,de
+		ex	de,hl
+		pop		hl
+		dec	h
+		jr	nz,_nxt_label
+		ret
 		
 ;------------------------	
 ; Wyjscie
@@ -742,32 +521,9 @@ _halt:
 		include math.asm 
 		include keyboard.asm
 
-;=========     D A T A     =========
-
-map	Map	{ 32, 12 }
-
-message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
-
-;------ hero ----------
-hero		Player	{ 2, 2, 1, $00 }
-hero_i		db	'^','>','v','<'			; ikony Hero
-hero_s		db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
-neighbor_offs:	db	0,1,0,-1
-
-; ------- Inventory ------------------------------
-bag			Inventory { %10100100, %10000000,			; klucze
-						%00000000, %00000000,			; bronie
-						%00000000, %00000000 }			; zbroje
-
-;------ doors & passages --------
-doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
-passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
-door_nr		db	0				; numer drzwi na ktore patrzy Hero
-
-;==================
-
-		include	messages.asm
-		include map.asm
+		include	vars.dat
+		include	messages.dat
+		include map.dat
 
 ;==================
 

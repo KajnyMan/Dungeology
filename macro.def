@@ -134,8 +134,6 @@ PRINT_STR	MACRO	_scradr, _msgadr
 		ENDM
 
 ; ===========================
-
-
 atrbuf_2_atr	MACRO
 		ld	de,ATR3
 		ld	hl,ATR3_BUF

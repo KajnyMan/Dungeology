@@ -27,11 +27,11 @@ scan_keyboard:
 		ret
 
 _set_bit0:
-		ld	a,1		; 0 bit ustawiony
+		ld	a,1
 		ret
 _set_bit4:
-		ld	a,16		; 4 bit ustawiony
+		ld	a,16
 		ret
 _set_bit5:
-		ld	a,32		; 5 bit ustawiony
+		ld	a,32
 		ret

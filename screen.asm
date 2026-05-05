@@ -258,6 +258,38 @@ set_atr_block:
 ;		ld	(hl),a
 ;		exx
 ;		ret
+
+; ---------------------------------------------------------------
+; Jesli bylo powiadomienie w poprzednim ruchu - trzeba wyczyscic
+; ---------------------------------------------------------------
+message_area_clear:
+		ld	a,(message_flag)
+		or	a
+		ret	z	
+
+		ld	hl,MSG_ADR				; blok lewy
+		ld	b,2
+		call	clear_txtlines
+
+		ld	hl,MSG_ADR + 8			; prawy
+		ld	b,2
+		call	clear_txtlines
+
+		xor	a
+		ld	(message_flag),a
+		ret
+		
+; Sprawdza czy ruch jest mozliwy
+ismove:	
+		call	right_before
+		cp	WALL_CHAR
+		jp	z,key_press
+		cp	C_DOOR_CHAR		
+		jp	z,key_press
+		call	move
+		call	message_area_clear
+		jp	refresh
+
 ; ==========================================
 ; Druguje ramke okna
 ; IN:	BC - Y, X lewego gornego rogu ramki
@@ -315,3 +347,4 @@ fov_frame_indexes:
 	db	F3Y+5, F3X, 82, $FF, F3Y+5, F3X+F3W, 82, $FF
 	db	F3Y+6, F3X, 83, $FF, F3Y+6, F3X+F3W, 83, $FF
 	db	F3Y+7, F3X, 76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
+
