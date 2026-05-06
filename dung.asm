@@ -5,15 +5,15 @@
 	DEVICE	ZXSPECTRUM48
 	EMPTYTAP "dng.tap"
 		
-		include	struct.def
-		include	macro.def
-		include	const.def
+		include	defs/struct.def
+		include	defs/macro.def
+		include	defs/const.def
 		include	loader.asm
 
 		org	TILES
 
 Start:
-		include tiles.dat
+		include data/tiles.dat
 
 ; ================
 ;  Code Start
@@ -138,7 +138,7 @@ move_door:
 _print_door_nr
 		push	hl				; save adresu drzwi
 		call	room_label
-		PRINT_STR	MSG_LINE1 + $A, msg_door
+		PRINT_STR	MSG_LINE1 + 3, msg_door
 		pop		hl				; restore
 		ld	a,(hl)
 		cp	O_DOOR_CHAR	
@@ -150,7 +150,7 @@ open_door:
 		ld	(hl),O_DOOR_CHAR		
 		jp	refresh
 _no_key
-		PRINT_STR	MSG_LINE2 + $A, msg_nokey
+		PRINT_STR	MSG_LINE2 + 3, msg_nokey
 		jp	wait_release	
 close_door:
 		ld	(hl),C_DOOR_CHAR		
@@ -207,7 +207,7 @@ _addit	ld	hl,(hero.offset)
 ;--------------------------------------------
 search:
 	;	call	message_area_clear
-		PRINT_STR	MSG_LINE1 + $9, msg_searching
+		PRINT_STR	MSG_LINE1 + 2, msg_searching
 		call 	right_before
 
 		push	hl					; save adres char przed Hero
@@ -227,11 +227,11 @@ search:
 		ld	(hl),0					; Zeruje ten offset na liscie
 		dec	hl						; nieodkrytych
 		ld	(hl),0					; przejsc
-		PRINT_STR	MSG_LINE2 + $8, msg_psgfinded
+		PRINT_STR	MSG_LINE2 + 2, msg_psgfinded
 		jp	refresh
 
 _nothing_here
-		PRINT_STR	MSG_LINE2 + $8, msg_nothing
+		PRINT_STR	MSG_LINE2 + 1, msg_nothing
 		jp	wait_release
 
 ; ----------------------------------------------------
@@ -239,7 +239,7 @@ _nothing_here
 ; ----------------------------------------------------
 take_item:
 		call	message_area_clear
-		PRINT_STR	MSG_LINE1 + $9, msg_floor
+		PRINT_STR	MSG_LINE1 + 2, msg_floor
 		call	search_floor
 		ld	a,c
 		cp	KEY_CHAR
@@ -250,7 +250,7 @@ take_item:
 		jp	z,take_armour
 
 		; jesli nic nie ma to komunikat ze nic nie ma
-		PRINT_STR	MSG_LINE2 + $9, msg_dust
+		PRINT_STR	MSG_LINE2 + 2, msg_dust
 		jp wait_release	
 
 ; ----------------------------------------------------
@@ -298,7 +298,7 @@ take_key:
 		add	hl,de
 		ld	a,(hl)
 		call	remove_key
-		PRINT_STR	MSG_LINE2 + $9, msg_key
+		PRINT_STR	MSG_LINE2 + 4, msg_key
 		jp	wait_release
 
 ; ----------------------------------------------------
@@ -311,7 +311,7 @@ take_weapon:
 		add	hl,de
 		ld	a,(hl)
 		ld	(hero.bag.weapon),a
-		PRINT_STR	MSG_LINE2 + $9, msg_weapon
+		PRINT_STR	MSG_LINE2 + 2, msg_weapon
 		ld	hl,hero.bag.weapon
 		ld	de,hero.stat.str
 		call	equip
@@ -330,7 +330,7 @@ take_armour:
 		ld	hl,hero.bag.armour
 		ld	de,hero.stat.def
 		call	equip
-		PRINT_STR	MSG_LINE2 + $9, msg_armour
+		PRINT_STR	MSG_LINE2 + 2, msg_armour
 		jp	wait_release
 
 ; ----------------------------------------------------
@@ -343,8 +343,8 @@ equip:
 		ld	a,(de)
 		add	a,c
 		ld	(de),a
-		call	update_stat_strings 
-		call	print_stat_info
+		call	update_info_strings 
+		call	print_info
 		ret
 
 ; ----------------------------------------------------
@@ -436,7 +436,7 @@ _finded
 ; Wbija biezace statystyki hero do stringow stat_info
 ; USED: wszystko
 ;------------------------------------------------------
-update_stat_strings:
+update_info_strings:
 		ld	hl,stat_info + 4
 		ld	de,hero.stat.hp
 		ld	b,3
@@ -486,11 +486,16 @@ _modify_string
 ;------------------------------------------------------
 ; Drukuje statystyki 
 ;------------------------------------------------------
-print_stat_info:
+print_info:
 		ld	bc,stat_info		
-		ld	de,INF_ADR
-		ld	h,5				;  ilosc etykiet
-_nxt_label
+		ld	de,STS_ADR
+		ld	h,3				;  ilosc etykiet statystyk
+		call	_p_info
+
+		ld	bc,__1st
+		ld	de,ITM_ADR
+		ld	h,2				;  ilosc etykiet przedmiotow
+_p_info
 		push	hl
 		push	de
 
@@ -503,7 +508,7 @@ _nxt_label
 		ex	de,hl
 		pop		hl
 		dec	h
-		jr	nz,_nxt_label
+		jr	nz,_p_info
 		ret
 		
 ;------------------------	
@@ -521,9 +526,9 @@ _halt:
 		include math.asm 
 		include keyboard.asm
 
-		include	vars.dat
-		include	messages.dat
-		include map.dat
+		include	data/vars.dat
+		include	data/messages.dat
+		include data/map.dat
 
 ;==================
 

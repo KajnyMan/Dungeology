@@ -1,12 +1,14 @@
 ; rozmieszczenie elementow ekranu ( od tego liczona jest reszta )
-FOV_Y			equ 2
-FOV_X			equ 11
-MSG_Y			equ	13
-MSG_X			equ	7
-W3D_Y			equ	17
-W3D_X			equ	11
-INF_Y			equ	FOV_Y
-INF_X			equ	FOV_X + FOV_WIDTH + 2
+FOV_Y			equ 13
+FOV_X			equ 4
+MSG_Y			equ	9
+MSG_X			equ	0
+W3D_Y			equ	1
+W3D_X			equ	4
+STS_Y			equ	1
+STS_X			equ	23
+ITM_Y			equ 9
+ITM_X			equ STS_X
 
 ; atrybuty
 BLACK			equ	0
@@ -69,9 +71,12 @@ F3H				equ W3D_HEIGHT + 1
 MSG_YX			equ	( MSG_Y * 256 ) + MSG_X
 MSG_WIDTH		equ 17
 MSG_HEIGHT		equ 2
-INF_WIDTH		equ 9
-INF_HEIGHT		equ	9
-INF_YX			equ	( INF_Y * 256 ) + INF_X 
+STS_WIDTH		equ 9
+STS_HEIGHT		equ	7
+ITM_WIDTH		equ 9
+ITM_HEIGHT		equ	3
+STS_YX			equ	( STS_Y * 256 ) + STS_X 
+ITM_YX			equ	( ITM_Y * 256 ) + ITM_X 
 WALL_CHAR		equ	'#'
 PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
@@ -102,8 +107,6 @@ SCREEN_TOP		equ	$5800
 SCREEN_ATR		equ	$5800
 ATR3			equ	$5A00
 MSG_AREA		equ $4888	; linie 96-127
-MSG_LINE1		equ	$48A0
-MSG_LINE2		equ	$48C0
 SCR3			equ	$5000
 ATR_MAP_TOP		equ	$5980
 ATR_MSG_TOP 	equ	$5A00
@@ -119,10 +122,24 @@ ATR2_MSB		equ	$59
 ATR3_MSB		equ	$5A
 
 	; adresy ruchome
+
+	IF FOV_Y > 7
+FOV_ADR			equ	SCR2 + ( ( FOV_Y - $08 ) * $20 ) + FOV_X
+	ELSE
 FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
+	ENDIF
+	
+	IF	W3D_Y > 15
 W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X	
+	ELSE
+W3D_ADR			equ	SCREEN + ( W3D_Y * $20 ) + W3D_X	
+	ENDIF
+
 MSG_ADR			equ	SCR2 + ( ( MSG_Y - $08 ) * $20 ) + MSG_X 
-INF_ADR			equ	FOV_ADR + FOV_WIDTH + 2
+MSG_LINE1		equ	MSG_ADR
+MSG_LINE2		equ	MSG_LINE1 + $20	
+STS_ADR			equ	SCREEN + ( STS_Y * $20 ) + STS_X
+ITM_ADR			equ	SCR2 + ( ITM_Y * $20 ) + ITM_X
 ATR3_BUF		equ	$F000
 ATR3_BUF_MSB	equ	$F0
 TILES			equ	$8000

@@ -8,7 +8,7 @@
 		call	print_frames
 
 		; kolory okna powiadomien
-		ld	a,YELLOW_BGD OR BLACK 
+		ld	a,BLACK_BGD OR WHITE 
 		ld	b,MSG_HEIGHT
 		ld	c,MSG_WIDTH
 		ld	de,MSG_YX
@@ -35,11 +35,18 @@
 		ld	de,FOV_YX
 		call set_atr_block
 
-		; kolory okna informacji
+		; kolory okna statystyk
 		ld	a,BLACK_BGD OR YELLOW 
-		ld	b,INF_HEIGHT
-		ld	c,INF_WIDTH
-		ld	de,INF_YX
+		ld	b,STS_HEIGHT
+		ld	c,STS_WIDTH
+		ld	de,STS_YX
+		call set_atr_block
+		
+		; kolory okna przedmiotow
+		ld	a,BLACK_BGD OR CYAN 
+		ld	b,ITM_HEIGHT
+		ld	c,ITM_WIDTH
+		ld	de,ITM_YX
 		call set_atr_block
 		
 ; ------ Oblicza rozmiar mapy --------
@@ -111,6 +118,6 @@ _inc_counters:
 ; dostanie swoj offset wzgledem Hero
 		call	calc_fov	
 ; Wbija biezace statystyki hero do stringow stat_info
-		call	update_stat_strings
-		call	print_stat_info
+		call	update_info_strings
+		call	print_info
 		
