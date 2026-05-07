@@ -121,10 +121,21 @@ _vsbl:
 		ld	a,b					; Restore Tile.char
 		cp	WALL_CHAR
 		jp	z,printwall_3d		; Sprite na ekran
+
 		cp	C_DOOR_CHAR	
-		jp	z,print_c_door_3d	; Sprite na ekran
+		jp	z,print_c_door_3d
+
 		cp	O_DOOR_CHAR	
-		jp	z,print_o_door_3d	; Sprite na ekran
+		jp	z,print_o_door_3d
+
+		cp	KEY_CHAR	
+		jp	z,print_key_3d
+
+		cp	WEAPON_CHAR	
+		jp	z,print_weapon_3d
+
+		cp	ARMOUR_CHAR	
+		jp	z,print_armour_3d
 
 _printout:
 		pop	bc

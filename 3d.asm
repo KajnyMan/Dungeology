@@ -1,20 +1,22 @@
 printwall_3d:	
 		ld	hl,wall_sprites
-;		ld	d,WALL3D_ATR
 		jr	_common
-
 print_c_door_3d:	
 		ld	hl,c_door_sprites
-;		ld	d,C_DOOR3D_ATR
 		jr	_common
 print_o_door_3d:	
 		ld	hl,o_door_sprites
-;		ld	d,O_DOOR3D_ATR
+		jr	_common
+print_key_3d:
+		ld	hl,key_sprites
+		jr	_common
+print_weapon_3d:
+		ld	hl,weapon_sprites
+		jr	_common
+print_armour_3d:
+		ld	hl,armour_sprites
 
 _common:
-;		ex	af,af'
-;		ld	a,d
-;		ex	af,af'			; atrybut Tile przygotowany
 		ld	a,(main_counter)
 		dec	a
 		add	a,a
@@ -319,8 +321,108 @@ o01		db	6
 		db  4, 8,		14, $FF
 		db  5, 8,		15, $FF
 
-o_door_sprites	dw	    o01,    o02
+o_door_sprites
+				dw	    o01,    o02
 				dw	    o03,o04,o05
 				dw	    o06,o07,o08
 				dw	o09,o10,o11,o12,o13
 				dw	o14,o15,o16,o17,o18
+
+;	-----	klucze  -----
+k18		db	0
+k17		db	0
+k16		db	0
+k15		db	0
+k14		db	0
+k13		db	0
+k12		db	0
+k11		db	0
+k10		db	0
+k09		db	0
+k08		db	1
+		db	4, 1,		89, $FF
+k07		db	1
+		db	4, 4,		89, $FF
+k06		db	1
+		db	4, 7,		89, $FF
+k05		db	1
+		db	4, 1,		88, $FF
+k04		db	1
+		db	4, 4,		88, $FF
+k03		db	1
+		db	4, 7,		88, $FF
+k02		db	0
+k01		db	0
+
+key_sprites
+		dw			    k01,    k02
+		dw			    k03,k04,k05
+		dw				k06,k07,k08
+		dw			k09,k10,k11,k12,k13
+		dw			k14,k15,k16,k17,k18
+
+;	-----	bronie  -----
+b18		db	0
+b17		db	0
+b16		db	0
+b15		db	0
+b14		db	0
+b13		db	0
+b12		db	0
+b11		db	0
+b10		db	0
+b09		db	0
+b08		db	1
+		db	4, 1,		89, $FF
+b07		db	1
+		db	4, 4,		89, $FF
+b06		db	1
+		db	4, 7,		89, $FF
+b05		db	1
+		db	4, 1,		90, $FF
+b04		db	1
+		db	4, 4,		90, $FF
+b03		db	1
+		db	4, 7,		90, $FF
+b02		db	0
+b01		db	0
+
+weapon_sprites
+		dw			    b01,    b02
+		dw			    b03,b04,b05
+		dw				b06,b07,b08
+		dw			b09,b10,b11,b12,b13
+		dw			b14,b15,b16,b17,b18
+
+;	-----	zbroje  -----
+a18		db	0
+a17		db	0
+a16		db	0
+a15		db	0
+a14		db	0
+a13		db	0
+a12		db	0
+a11		db	0
+a10		db	0
+a09		db	0
+a08		db	1
+		db	4, 1,		89, $FF
+a07		db	1
+		db	4, 4,		89, $FF
+a06		db	1
+		db	4, 7,		89, $FF
+a05		db	1
+		db	4, 1,		91, $FF
+a04		db	1
+		db	4, 4,		91, $FF
+a03		db	1
+		db	4, 7,		91, $FF
+a02		db	0
+a01		db	0
+
+armour_sprites
+		dw			    a01,    a02
+		dw			    a03,a04,a05
+		dw				a06,a07,a08
+		dw			a09,a10,a11,a12,a13
+		dw			a14,a15,a16,a17,a18
