@@ -98,7 +98,7 @@ ascii2num:
 ;		C - odpowiedni bajt flagi
 ; -------------------------------------------------------------------
 nr_to_bit:
-		cp	8
+		cp	9
 		jr	c,_low_flags
 		inc	de
 		sub	8

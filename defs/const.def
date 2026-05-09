@@ -85,6 +85,7 @@ O_DOOR_CHAR		equ	'/'
 KEY_CHAR		equ	'~'
 WEAPON_CHAR		equ	'('
 ARMOUR_CHAR		equ	'['
+MONSTER_CHAR	equ	'&'
 PASSAGE_CHAR	equ	'='
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF

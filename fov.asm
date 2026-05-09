@@ -104,16 +104,15 @@ _vsbl:
 		ld	e,a
 		and	a			; carry  0	
 		sbc	hl,de			; Adres ( Y, X, char )
-		push	hl
-		pop	ix	
-		
-		ld	b,(ix)			; Y
-		ld	c,(ix+1)		; X	
+		ld	b,(hl)		; Y
+		inc	hl
+		ld	c,(hl)		; X		
+		inc	hl
 		
 		; Tile na ekran	
 		call	gotoyx
 
-		ld	a,(ix+2)			; Tile char
+		ld	a,(hl)			; Tile char
 		ld	b,a					; Save Tile char
 		call	pchar
 
@@ -136,7 +135,9 @@ _vsbl:
 
 		cp	ARMOUR_CHAR	
 		jp	z,print_armour_3d
-
+		
+		cp	MONSTER_CHAR
+		jp	z,print_figure_3d
 _printout:
 		pop	bc
 		djnz	printloop			

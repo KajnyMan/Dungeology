@@ -10,7 +10,7 @@ hero			Character	{
 				16, 10, 8,					; stats
 				0,							; bron	
 				0,							; zbroja	
-				%10100100, %10000000		; klucze
+				%10100101, %10000000		; klucze
 							 }
 ; ------- Statyczne -----------------
 hero_i			db	'^','>','v','<'			; ikony Hero
@@ -19,11 +19,11 @@ neighbor_offs:	db	0,1,0,-1
 
 ; ------- Inventory ------------------------------
 stat_info:
-			db	" HP:00$"
-			db	"STR:00$"
-			db	"DEF:00$"
-__1st		db	"WEP:   $"
-			db	"AMR:   $"
+			db	" hp:00$"
+			db	"str:00$"
+			db	"def:00$"
+__1st		db	"wep:   $"
+			db	"amr:   $"
 __lst
 
 LABELS_NUMBER	equ		( __lst - __1st ) / 8
