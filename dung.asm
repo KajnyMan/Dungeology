@@ -556,7 +556,9 @@ _p_info
 ; Teleport
 ;---------------------------------------------	
 teleport:
+		CLEAR_LINES SCREEN_TOP, 192
 		PRINT_STR	MSG_LINE1 + 4, msg_teleport	
+
 ;------------------------	
 ; Wyjscie
 ;------------------------
