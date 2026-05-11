@@ -1,0 +1,3420 @@
+# file opened: dung.asm
+  1   0000              ;-------------------------------------------;
+  2   0000              ; 	D U N G E O L O G Y - zx spectrum
+  3   0000              ;-------------------------------------------;
+  4   0000
+  5   0000              	DEVICE	ZXSPECTRUM48
+  6   0000              	EMPTYTAP "dng.tap"
+  7   0000
+  8   0000              		include	defs/struct.def
+# file opened: struct.def
+  1+  0000              	STRUCT	Stat
+  2+  0000 ~            hp				db	16
+  3+  0000 ~            str				db	10
+  4+  0000 ~            def				db	8
+  5+  0000              	ENDS
+  6+  0000
+  7+  0000              ; ----------------------------
+  8+  0000              	STRUCT	Inventory
+  9+  0000 ~            weapon			db
+ 10+  0000 ~            armour			db
+ 11+  0000 ~            keys			db
+ 11+  0000 ~              db			; 2 bajtowe pole flag, klucz nr 1 = 7 bit lsb
+ 12+  0000              	ENDS
+ 13+  0000
+ 14+  0000              ; ----------------------------
+ 15+  0000              	STRUCT	Character
+ 16+  0000 ~            mapY			db
+ 17+  0000 ~            mapX			db
+ 18+  0000 ~            direction		db
+ 19+  0000 ~            offset			dw
+ 20+  0000 ~            stat			Stat
+ 21+  0000 ~            bag				Inventory
+ 22+  0000              	ENDS
+ 23+  0000
+ 24+  0000              ; ----------------------------
+ 25+  0000              ;	STRUCT	Attribute
+ 26+  0000              ;	ENDS
+ 27+  0000
+ 28+  0000              ; ----------------------------
+ 29+  0000              	STRUCT	Map
+ 30+  0000 ~            width		db
+ 31+  0000 ~            height		db
+ 32+  0000 ~            size		dw
+ 33+  0000              	ENDS
+ 34+  0000
+# file closed: struct.def
+  9   0000              		include	defs/macro.def
+# file opened: macro.def
+  1+  0000              MUL_Ax8_TO_HL	MACRO
+  2+  0000 ~            		ld	h,0
+  3+  0000 ~            		ld	l,a
+  4+  0000 ~            		add	hl,hl
+  5+  0000 ~            		add	hl,hl
+  6+  0000 ~            		add	hl,hl
+  7+  0000              		ENDM
+  8+  0000              ; ========================
+  9+  0000
+ 10+  0000              CLEAR_LINES	MACRO	_end_of_area, _lines
+ 11+  0000 ~            		ld	de,0000h
+ 12+  0000 ~            		ld	hl,0000h
+ 13+  0000 ~            		add	hl,sp			; save SP
+ 14+  0000 ~            		ld	sp,_end_of_area	; czysci od gory
+ 15+  0000 ~            		ld	b,_lines		; 192 = 6144 / ( 16 x 2 )
+ 16+  0000 ~            .clear_block:
+ 17+  0000 ~            	REPT	16				; zeruje 32 bajty na obrot
+ 18+  0000 ~            		push	de
+ 19+  0000 ~            	ENDR
+ 20+  0000 ~            		djnz	.clear_block
+ 21+  0000 ~            		ld	sp,hl			; restore SP
+ 22+  0000              		ENDM
+ 23+  0000              ; =======================
+ 24+  0000              clear_txtline	MACRO _txtline
+ 25+  0000 ~            		ld	hl,_txtline
+ 26+  0000 ~            		ld	e,l
+ 27+  0000 ~            		ld	b,8
+ 28+  0000 ~            		xor	a
+ 29+  0000 ~            .clear_block:
+ 30+  0000 ~            	REPT	32
+ 31+  0000 ~            		ld	(hl),a
+ 32+  0000 ~            		inc	hl
+ 33+  0000 ~            	ENDR
+ 34+  0000 ~            		ld	l,e
+ 35+  0000 ~            		inc	h
+ 36+  0000 ~            		djnz	.clear_block
+ 37+  0000              		ENDM
+ 38+  0000
+ 39+  0000              ; =======================
+ 40+  0000              BORDER_COLOR	MACRO	_color
+ 41+  0000 ~            		ld	a,_color
+ 42+  0000 ~            		out	(0FEh),a
+ 43+  0000              		ENDM
+ 44+  0000
+ 45+  0000              ; =======================
+ 46+  0000              SET_COLOR	MACRO _paper_ink, _adress, _rows
+ 47+  0000 ~            		ld de, _paper_ink * 256 + _paper_ink
+ 48+  0000 ~            		ld	hl,0000h
+ 49+  0000 ~            		add	hl,sp			; save SP
+ 50+  0000 ~            		ld	sp,_adress
+ 51+  0000 ~            		ld	b,_rows
+ 52+  0000 ~            .colour_block:
+ 53+  0000 ~            	REPT	16				; zeruje 32 bajty na obrot
+ 54+  0000 ~            		push	de
+ 55+  0000 ~            	ENDR
+ 56+  0000 ~            		djnz	.colour_block
+ 57+  0000 ~            		ld	sp,hl			; restore SP
+ 58+  0000              		ENDM
+ 59+  0000
+ 60+  0000              ; =================
+ 61+  0000              ; IN:	Y,X w DE
+ 62+  0000              ; =================
+ 63+  0000              SET_ATR_LINE	MACRO _paper_ink, _col
+ 64+  0000 ~            		ld	a,d
+ 65+  0000 ~            		add	a,a
+ 66+  0000 ~            		add	a,a
+ 67+  0000 ~            		add	a,a
+ 68+  0000 ~            		ld	l,a
+ 69+  0000 ~            		ld	h,0
+ 70+  0000 ~            		add	hl,hl
+ 71+  0000 ~            		add hl,hl
+ 72+  0000 ~            		ld	a,e
+ 73+  0000 ~            		add	a,l
+ 74+  0000 ~            		ld	l,a
+ 75+  0000 ~            		ld	a,ATR_MSB
+ 76+  0000 ~            		add	a,h
+ 77+  0000 ~            		ld	h,a
+ 78+  0000 ~            		ld	a,_paper_ink
+ 79+  0000 ~            	IF	NUL _col
+ 80+  0000 ~            		ld	(hl),a
+ 81+  0000 ~            		inc	l
+ 82+  0000 ~            	ELSE
+ 83+  0000 ~            		REPT	_col
+ 84+  0000 ~            			ld	(hl),a
+ 85+  0000 ~            			inc	l
+ 86+  0000 ~            		ENDR
+ 87+  0000 ~            	ENDIF
+ 88+  0000              		ENDM
+ 89+  0000
+ 90+  0000              ; =========================
+ 91+  0000              SET_ATR_BLOCK	MACRO _paper_ink, _col, _lines
+ 92+  0000 ~            		ld	b,_lines
+ 93+  0000 ~            .next_ln:
+ 94+  0000 ~            		set_atr _paper_ink, _col
+ 95+  0000 ~            		inc	d
+ 96+  0000 ~            		djnz	.next_ln
+ 97+  0000              		ENDM
+ 98+  0000
+ 99+  0000              ; =========================
+100+  0000              ; IN : DE - adres Tile na ekranie, A'- atrybut
+101+  0000              print_attribute_2buffer	MACRO
+102+  0000 ~            		ld	h,ATR3_BUF_MSB
+103+  0000 ~            		ld	l,e
+104+  0000 ~            		ex	af,af'
+105+  0000 ~            		ld	(hl),a
+106+  0000 ~            		ex	af,af'
+107+  0000              		ENDM
+108+  0000
+109+  0000              ; ========================
+110+  0000              PRINT_ATR	MACRO
+111+  0000 ~            		ld	a,d
+112+  0000 ~            		cp	$48
+113+  0000 ~            		jr	z,t2
+114+  0000 ~            		jr	nc,t3
+115+  0000 ~            		ld	h,ATR1_MSB
+116+  0000 ~            		jr	cmn
+117+  0000 ~            t2:
+118+  0000 ~            		ld	h,ATR2_MSB
+119+  0000 ~            		jr	cmn
+120+  0000 ~            t3:
+121+  0000 ~            		ld	h,ATR3_BUF_MSB
+122+  0000 ~            cmn:
+123+  0000 ~            		ld	l,e
+124+  0000 ~            		ex	af,af'
+125+  0000 ~            		ld	(hl),a
+126+  0000 ~            		ex	af,af'
+127+  0000              		ENDM
+128+  0000
+129+  0000              ; =========================
+130+  0000              PRINT_STR	MACRO	_scradr, _msgadr
+131+  0000 ~            		ld	de,_scradr
+132+  0000 ~            		ld	bc,_msgadr
+133+  0000 ~            		call	pstring
+134+  0000              		ENDM
+135+  0000
+136+  0000              ; ===========================
+137+  0000              atrbuf_2_atr	MACRO
+138+  0000 ~            		ld	de,ATR3
+139+  0000 ~            		ld	hl,ATR3_BUF
+140+  0000 ~            		ld	bc,32 * 8
+141+  0000 ~            		ldir
+142+  0000              		ENDM
+143+  0000
+# file closed: macro.def
+ 10   0000              		include	defs/const.def
+# file opened: const.def
+  1+  0000              ; rozmieszczenie elementow ekranu ( od tego liczona jest reszta )
+  2+  0000              FOV_Y			equ 13
+  3+  0000              FOV_X			equ 4
+  4+  0000              MSG_Y			equ	9
+  5+  0000              MSG_X			equ	0
+  6+  0000              W3D_Y			equ	1
+  7+  0000              W3D_X			equ	4
+  8+  0000              STS_Y			equ	1
+  9+  0000              STS_X			equ	23
+ 10+  0000              ITM_Y			equ 9
+ 11+  0000              ITM_X			equ STS_X
+ 12+  0000
+ 13+  0000              ; atrybuty
+ 14+  0000              BLACK			equ	0
+ 15+  0000              BLUE			equ	1
+ 16+  0000              RED				equ	2
+ 17+  0000              PURPLE			equ	3
+ 18+  0000              GREEN			equ	4
+ 19+  0000              CYAN			equ	5
+ 20+  0000              YELLOW			equ	6
+ 21+  0000              WHITE			equ	7
+ 22+  0000              BLACK_BGD		equ	0
+ 23+  0000              BLUE_BGD		equ	8
+ 24+  0000              RED_BGD			equ	16
+ 25+  0000              PURPLE_BGD		equ	24
+ 26+  0000              GREEN_BGD		equ	32
+ 27+  0000              CYAN_BGD		equ	40
+ 28+  0000              YELLOW_BGD		equ	48
+ 29+  0000              WHITE_BGD		equ	56
+ 30+  0000              BRIGHT			equ	64
+ 31+  0000              FLASH			equ	128
+ 32+  0000              SCREEN_WIDTH	equ	32
+ 33+  0000
+ 34+  0000              FOV_ATR			equ BLACK_BGD OR RED
+ 35+  0000              FOV_FRAME_ATR	equ BLACK_BGD OR GREEN
+ 36+  0000              W3D_ATR			equ BLACK_BGD OR BLUE OR BRIGHT
+ 37+  0000              W3D_FRAME_ATR	equ BLACK_BGD OR PURPLE
+ 38+  0000              MSG_ATR			equ BLACK_BGD OR WHITE
+ 39+  0000              STS_ATR			equ BLACK_BGD OR YELLOW
+ 40+  0000              ITM_ATR			equ BLACK_BGD OR CYAN
+ 41+  0000              OFF_ATR			equ BLACK_BGD OR BLACK
+ 42+  0000
+ 43+  0000              PORTAL_ATR		equ BLACK_BGD OR YELLOW OR FLASH
+ 44+  0000
+ 45+  0000              	; klawiatura
+ 46+  0000              CS_V			equ	$FE
+ 47+  0000              A_G				equ	$FD
+ 48+  0000              Q_T				equ	$FB
+ 49+  0000              Num1_5			equ	$F7
+ 50+  0000              Num0_6			equ	$EF
+ 51+  0000              P_Y				equ	$DF
+ 52+  0000              Enter_H			equ	$BF
+ 53+  0000              Space_B			equ	$7F
+ 54+  0000              	; mapa i hero
+ 55+  0000              FOV_YX			equ	( FOV_Y * 256 ) + FOV_X
+ 56+  0000              FOV_WIDTH		equ 9
+ 57+  0000              FOV_HEIGHT		equ 9
+ 58+  0000              FOV_FRAME_Y		equ	FOV_Y - 1
+ 59+  0000              FOV_FRAME_X		equ	FOV_X - 1
+ 60+  0000              FOV_FRAME_YX	equ	( FOV_FRAME_Y * 256 ) + FOV_FRAME_X
+ 61+  0000              FOV_FRAME_H		equ	FOV_HEIGHT + 2
+ 62+  0000              FOV_FRAME_W		equ	FOV_WIDTH + 2
+ 63+  0000              FFY				equ	FOV_FRAME_Y
+ 64+  0000              FFX				equ	FOV_FRAME_X
+ 65+  0000              FFW				equ	FOV_WIDTH + 1
+ 66+  0000              FFH				equ FOV_HEIGHT + 1
+ 67+  0000              W3D_HEIGHT		equ	6
+ 68+  0000              W3D_WIDTH		equ	9
+ 69+  0000              W3D_YX			equ	( W3D_Y * 256 ) + W3D_X
+ 70+  0000              W3D_FRAME_Y		equ	W3D_Y - 1
+ 71+  0000              W3D_FRAME_X		equ	W3D_X - 1
+ 72+  0000              W3D_FRAME_YX	equ	( W3D_FRAME_Y * 256 ) + W3D_FRAME_X
+ 73+  0000              W3D_FRAME_H		equ	W3D_HEIGHT + 2
+ 74+  0000              W3D_FRAME_W		equ	W3D_WIDTH + 2
+ 75+  0000              F3Y				equ	W3D_FRAME_Y
+ 76+  0000              F3X				equ	W3D_FRAME_X
+ 77+  0000              F3W				equ	W3D_WIDTH + 1
+ 78+  0000              F3H				equ W3D_HEIGHT + 1
+ 79+  0000              MSG_YX			equ	( MSG_Y * 256 ) + MSG_X
+ 80+  0000              MSG_WIDTH		equ 17
+ 81+  0000              MSG_HEIGHT		equ 2
+ 82+  0000              STS_WIDTH		equ 9
+ 83+  0000              STS_HEIGHT		equ	7
+ 84+  0000              ITM_WIDTH		equ 9
+ 85+  0000              ITM_HEIGHT		equ	3
+ 86+  0000              STS_YX			equ	( STS_Y * 256 ) + STS_X
+ 87+  0000              ITM_YX			equ	( ITM_Y * 256 ) + ITM_X
+ 88+  0000              WALL_CHAR		equ	'#'
+ 89+  0000              PREV_WALL		equ	'.'
+ 90+  0000              FLOOR_CHAR		equ	' '
+ 91+  0000              C_DOOR_CHAR		equ	'+'
+ 92+  0000              O_DOOR_CHAR		equ	'/'
+ 93+  0000              KEY_CHAR		equ	'~'
+ 94+  0000              WEAPON_CHAR		equ	'('
+ 95+  0000              ARMOUR_CHAR		equ	'['
+ 96+  0000              FIGURE_CHAR		equ	'&'
+ 97+  0000              PASSAGE_CHAR	equ	'='
+ 98+  0000              PORTAL_CHAR		equ	'P'
+ 99+  0000              STRING_DELIM	equ	'$'
+100+  0000              TILE_EOL		equ $FF
+101+  0000              DELIM			equ	0FFh
+102+  0000              OBJ_MAX			equ	16
+103+  0000              HERO_Y			equ	FOV_Y + 4
+104+  0000              HERO_X			equ FOV_X + 4
+105+  0000              HERO_ATR		equ BLACK_BGD OR YELLOW
+106+  0000              HERO_YX			equ ( HERO_Y * 256 ) + HERO_X
+107+  0000              NORTH			equ	0
+108+  0000              EAST			equ	1
+109+  0000              SOUTH			equ	2
+110+  0000              WEST			equ	3
+111+  0000
+112+  0000              	; adresy stale
+113+  0000              FONTS			equ	$3D00
+114+  0000              SCREEN			equ	$4000
+115+  0000              SCR2			equ	$4800
+116+  0000              SCREEN_TOP		equ	$5800
+117+  0000              SCREEN_ATR		equ	$5800
+118+  0000              ATR3			equ	$5A00
+119+  0000              MSG_AREA		equ $4888	; linie 96-127
+120+  0000              SCR3			equ	$5000
+121+  0000              ATR_MAP_TOP		equ	$5980
+122+  0000              ATR_MSG_TOP 	equ	$5A00
+123+  0000              ATR_3D_TOP		equ	$5B00
+124+  0000              PRINTER_BUF		equ $5B00
+125+  0000              FONTS_MSB		equ $3D
+126+  0000              SCR1_MSB		equ $40
+127+  0000              SCR2_MSB		equ $48
+128+  0000              SCR3_MSB		equ $50
+129+  0000              ATR_MSB			equ	$58
+130+  0000              ATR1_MSB		equ	$58
+131+  0000              ATR2_MSB		equ	$59
+132+  0000              ATR3_MSB		equ	$5A
+133+  0000
+134+  0000              	; adresy ruchome
+135+  0000
+136+  0000              	IF FOV_Y > 7
+137+  0000              FOV_ADR			equ	SCR2 + ( ( FOV_Y - $08 ) * $20 ) + FOV_X
+138+  0000              	ELSE
+139+  0000 ~            FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
+140+  0000              	ENDIF
+141+  0000
+142+  0000              	IF	W3D_Y > 15
+143+  0000 ~            W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X
+144+  0000              	ELSE
+145+  0000              W3D_ADR			equ	SCREEN + ( W3D_Y * $20 ) + W3D_X
+146+  0000              	ENDIF
+147+  0000
+148+  0000              MSG_ADR			equ	SCR2 + ( ( MSG_Y - $08 ) * $20 ) + MSG_X
+149+  0000              MSG_LINE1		equ	MSG_ADR
+150+  0000              MSG_LINE2		equ	MSG_LINE1 + $20
+151+  0000              STS_ADR			equ	SCREEN + ( STS_Y * $20 ) + STS_X
+152+  0000              ITM_ADR			equ	SCR2 + ( ITM_Y * $20 ) + ITM_X
+153+  0000              ATR3_BUF		equ	$F000
+154+  0000              ATR3_BUF_MSB	equ	$F0
+155+  0000              TILES			equ	$8000
+156+  0000              TILES_MSB		equ $80
+157+  0000              GAME_START		equ	$8400
+158+  0000
+# file closed: const.def
+ 11   0000              		include	loader.asm
+# file opened: loader.asm
+  1+  0000              ; ----------------
+  2+  0000              ;  Basic Loader
+  3+  0000              ; ----------------
+  4+  0000              		org	PRINTER_BUF
+  5+  5B00              BasicStart:
+  6+  5B00 00 0A            db 0, 10            ; Numer linii
+  7+  5B02 20 00            dw _b_end - _b_line   ; Dlugosc linii
+  8+  5B04              _b_line:
+  9+  5B04 FD               db $FD              ; CLEAR
+ 10+  5B05                  ; "00000" jako tekst, potem $0E i 5 bajtow (format Sinclaira dla 32767)
+ 11+  5B05 30 30 30 30      db "00000", $0E, 0, 0, $FF, $7F, 0
+ 11+  5B09 30 0E 00 00
+ 11+  5B0D FF 7F 00
+ 12+  5B10 3A               db ":"
+ 13+  5B11 EF 22 22 AF      db $EF, $22, $22, $AF ; LOAD "" CODE
+ 14+  5B15 3A               db ":"
+ 15+  5B16 F9 C0            db $F9, $C0         ; RANDOMIZE USR
+ 16+  5B18                  ; "32768" jako tekst, potem $0E i 5 bajtow (format Sinclaira dla 32768)
+ 17+  5B18 30 30 30 30      db "00000", $0E, 0, 0, low CodeStart, high CodeStart, 0
+ 17+  5B1C 30 0E 00 00
+ 17+  5B20 50 83 00
+ 18+  5B23 0D               db $0D              ; Enter
+ 19+  5B24              _b_end:
+ 20+  5B24
+ 21+  5B24                  ; pierwszy blok (BASIC) na tasme
+ 22+  5B24                  SAVETAP "dng.tap", BASIC, "Loader", BasicStart, _b_end - BasicStart, 10
+ 23+  5B24
+# file closed: loader.asm
+ 12   5B24
+ 13   5B24              		org	TILES
+ 14   8000
+ 15   8000              Start:
+ 16   8000              		include data/tiles.dat
+# file opened: tiles.dat
+  1+  8000              ; WALL
+  2+  8000              wall_tiles
+  3+  8000              	; od 1 do 5
+  4+  8000 00 77 7F 3F  	db	$00, $77, $7F, $3F, $7F, $7F, $7F, $7F
+  4+  8004 7F 7F 7F 7F
+  5+  8008 00 FE FF FF  	db	$00, $FE, $FF, $FF, $FE, $FF, $FF, $7A
+  5+  800C FE FF FF 7A
+  6+  8010 00 2E 7F 7F  	db	$00, $2E, $7F, $7F, $7F, $7F, $7F, $3F
+  6+  8014 7F 7F 7F 3F
+  7+  8018 00 7E FF FF  	db	$00, $7E, $FF, $FF, $FE, $DF, $FF, $7F
+  7+  801C FE DF FF 7F
+  8+  8020
+  9+  8020 00 00 00 00  	db	$00, $00, $00, $00, $00, $C0, $F0, $FC
+  9+  8024 00 C0 F0 FC
+ 10+  8028 FF DF EF FF  	db	$FF, $DF, $EF, $FF, $FF, $7F, $8F, $E9
+ 10+  802C FF 7F 8F E9
+ 11+  8030 EF EF EF EF  	db	$EF, $EF, $EF, $EF, $EF, $EF, $EF, $EF
+ 11+  8034 EF EF EF EF
+ 12+  8038 29 FF FF FE  	db	$29, $FF, $FF, $FE, $FF, $FF, $FF, $FF
+ 12+  803C FF FF FF FF
+ 13+  8040
+ 14+  8040 FF F8 8F 6F  	db	$FF, $F8, $8F, $6F, $EF, $EF, $EF, $EF
+ 14+  8044 EF EF EF EF
+ 15+  8048 EF EC F0 C0  	db	$EF, $EC, $F0, $C0, $00, $00, $00, $00
+ 15+  804C 00 00 00 00
+ 16+  8050 00 00 00 00  	db	$00, $00, $00, $00, $00, $01, $07, $1F
+ 16+  8054 00 01 07 1F
+ 17+  8058 7F 7F 7F 7F  	db	$7F, $7F, $7F, $7F, $7F, $7F, $78, $4B
+ 17+  805C 7F 7F 78 4B
+ 18+  8060
+ 19+  8060 7B 7B 7B 7B  	db	$7B, $7B, $7B, $7B, $7B, $7B, $7B, $7B
+ 19+  8064 7B 7B 7B 7B
+ 20+  8068 00 7F 7F 7F  	db	$00, $7F, $7F, $7F, $7F, $7F, $7F, $7F
+ 20+  806C 7F 7F 7F 7F
+ 21+  8070 7F 0F 78 7B  	db	$7F, $0F, $78, $7B, $7B, $7B, $7B, $7B
+ 21+  8074 7B 7B 7B 7B
+ 22+  8078 7B 1B 07 01  	db	$7B, $1B, $07, $01, $00, $00, $00, $00
+ 22+  807C 00 00 00 00
+ 23+  8080
+ 24+  8080              ;	16
+ 25+  8080 00 40 70 78  	db	$00, $40, $70, $78, $7B, $7B, $7B, $7B
+ 25+  8084 7B 7B 7B 7B
+ 26+  8088 00 00 00 00  	db	$00, $00, $00, $00, $00, $C0, $F0, $F4
+ 26+  808C 00 C0 F0 F4
+ 27+  8090 1B 79 7F 6F  	db	$1B, $79, $7F, $6F, $7F, $7F, $7F, $3F
+ 27+  8094 7F 7F 7F 3F
+ 28+  8098 F7 F7 9F 79  	db	$F7, $F7, $9F, $79, $7F, $7F, $7F, $7F
+ 28+  809C 7F 7F 7F 7F
+ 29+  80A0
+ 30+  80A0 09 7B 7B 7B  	db	$09, $7B, $7B, $7B, $7B, $5B, $7B, $79
+ 30+  80A4 7B 5B 7B 79
+ 31+  80A8 4A F7 F7 F7  	db	$4A, $F7, $F7, $F7, $F7, $F9, $9F, $FF
+ 31+  80AC F7 F9 9F FF
+ 32+  80B0 1F 7F 7F 7F  	db	$1F, $7F, $7F, $7F, $7F, $7C, $70, $40
+ 32+  80B4 7F 7C 70 40
+ 33+  80B8 7F 7C 70 40  	db	$7F, $7C, $70, $40, $00, $00, $00, $00
+ 33+  80BC 00 00 00 00
+ 34+  80C0
+ 35+  80C0 00 00 00 00  	db	$00, $00, $00, $00, $00, $01, $07, $17
+ 35+  80C4 00 01 07 17
+ 36+  80C8 00 01 07 0F  	db	$00, $01, $07, $0F, $6F, $EF, $EF, $EF
+ 36+  80CC 6F EF EF EF
+ 37+  80D0 77 77 7C 4F  	db	$77, $77, $7C, $4F, $7F, $7F, $7F, $7F
+ 37+  80D4 7F 7F 7F 7F
+ 38+  80D8 FC CF FF 7F  	db	$FC, $CF, $FF, $7F, $7F, $7F, $7F, $7F
+ 38+  80DC 7F 7F 7F 7F
+ 39+  80E0
+ 40+  80E0 29 77 77 77  	db	$29, $77, $77, $77, $77, $4F, $7C, $7F
+ 40+  80E4 77 4F 7C 7F
+ 41+  80E8 48 FF FF FE  	db	$48, $FF, $FF, $FE, $FF, $FF, $FF, $CF
+ 41+  80EC FF FF FF CF
+ 42+  80F0 7E 1E 06 00  	db	$7E, $1E, $06, $00, $00, $00, $00, $00
+ 42+  80F4 00 00 00 00
+ 43+  80F8 FC FF FF FF  	db	$FC, $FF, $FF, $FF, $7F, $17, $07, $01
+ 43+  80FC 7F 17 07 01
+ 44+  8100
+ 45+  8100              ;	32
+ 46+  8100 00 3F 7F 7F  	db	$00, $3F, $7F, $7F, $00, $3B, $7B, $6B
+ 46+  8104 00 3B 7B 6B
+ 47+  8108 00 7D 7F 7F  	db	$00, $7D, $7F, $7F, $00, $E7, $F7, $F7
+ 47+  810C 00 E7 F7 F7
+ 48+  8110 00 40 70 7C  	db	$00, $40, $70, $7C, $2F, $6B, $6E, $7F
+ 48+  8114 2F 6B 6E 7F
+ 49+  8118 15 7F 6E 6B  	db	$15, $7F, $6E, $6B, $2F, $7C, $70, $40
+ 49+  811C 2F 7C 70 40
+ 50+  8120
+ 51+  8120 00 01 07 1F  	db	$00, $01, $07, $1F, $7A, $6B, $3B, $7F
+ 51+  8124 7A 6B 3B 7F
+ 52+  8128 5A 7F 3B 6B  	db	$5A, $7F, $3B, $6B, $7A, $1F, $07, $01
+ 52+  812C 7A 1F 07 01
+ 53+  8130 00 00 00 00  	db	$00, $00, $00, $00, $00, $6B, $00, $6D
+ 53+  8134 00 6B 00 6D
+ 54+  8138 00 5B 00 6D  	db	$00, $5B, $00, $6D, $00, $00, $00, $00
+ 54+  813C 00 00 00 00
+ 55+  8140
+ 56+  8140 00 00 00 00  	db	$00, $00, $00, $00, $00, $01, $07, $1B
+ 56+  8144 00 01 07 1B
+ 57+  8148 7F 1B 07 01  	db	$7F, $1B, $07, $01, $00, $00, $00, $00
+ 57+  814C 00 00 00 00
+ 58+  8150 00 00 00 00  	db	$00, $00, $00, $00, $00, $80, $E0, $D0
+ 58+  8154 00 80 E0 D0
+ 59+  8158 FE DC E0 80  	db	$FE, $DC, $E0, $80, $00, $00, $00, $00
+ 59+  815C 00 00 00 00
+ 60+  8160
+ 61+  8160 BD EF 00 00  	db	$BD, $EF, $00, $00, $00, $00, $00, $00
+ 61+  8164 00 00 00 00
+ 62+  8168 00 7E 7E 66  	db	$00, $7E, $7E, $66, $66, $7E, $7E, $00
+ 62+  816C 66 7E 7E 00
+ 63+  8170 00 7F 7F 00  	db	$00, $7F, $7F, $00, $7F, $7F, $7F, $00
+ 63+  8174 7F 7F 7F 00
+ 64+  8178 37 37 37 17  	db	$37, $37, $37, $17, $17, $17, $37, $37
+ 64+  817C 17 17 37 37
+ 65+  8180
+ 66+  8180              ;	48
+ 67+  8180 7E 7E 7E 7E  	db	$7E, $7E, $7E, $7E, $7E, $7E, $60, $7E
+ 67+  8184 7E 7E 60 7E
+ 68+  8188 7E 7E 7E 7E  	db	$7E, $7E, $7E, $7E, $7E, $7E, $7E, $7E
+ 68+  818C 7E 7E 7E 7E
+ 69+  8190 77 77 77 77  	db	$77, $77, $77, $77, $77, $77, $77, $77
+ 69+  8194 77 77 77 77
+ 70+  8198 00 3F 3F 33  	db	$00, $3F, $3F, #33, $33, $3F, $3F, $00
+ 70+  819C 33 3F 3F 00
+ 71+  81A0              ;	52
+ 72+  81A0 00 00 00 00  	db	$00, $00, $00, $00, $00, $01, $07, $14
+ 72+  81A4 00 01 07 14
+ 73+  81A8 00 01 07 0F  	db	$00, $01, $07, $0F, $6F, $EF, $2F, $EF
+ 73+  81AC 6F EF 2F EF
+ 74+  81B0 77 76 76 72  	db	$77, $76, $76, $72, $76, $76, $76, $76
+ 74+  81B4 76 76 76 76
+ 75+  81B8 EC 6F 6F 6F  	db	$EC, $6F, $6F, $6F, $6F, $6F, $4F, $6F
+ 75+  81BC 6F 6F 4F 6F
+ 76+  81C0
+ 77+  81C0 76 76 76 76  	db	$76, $76, $76, $76, $76, $72, $76, $77
+ 77+  81C4 76 72 76 77
+ 78+  81C8 6F 6F 6F 6E  	db	$6F, $6F, $6F, $6E, $6F, $6F, $6F, $EF
+ 78+  81CC 6F 6F 6F EF
+ 79+  81D0 74 17 07 01  	db	$74, $17, $07, $01, $00, $00, $00, $00
+ 79+  81D4 00 00 00 00
+ 80+  81D8 EC 2F EF EF  	db	$EC, $2F, $EF, $EF, $6F, $0F, $07, $01
+ 80+  81DC 6F 0F 07 01
+ 81+  81E0
+ 82+  81E0 00 40 70 78  	db	$00, $40, $70, $78, $7B, $7B, $7A, $7B
+ 82+  81E4 7B 7B 7A 7B
+ 83+  81E8 00 00 00 00  	db	$00, $00, $00, $00, $00, $C0, $70, $94
+ 83+  81EC 00 C0 70 94
+ 84+  81F0 3B 79 7B 7B  	db	$3B, $79, $7B, $7B, $7B, $7B, $7B, $7B
+ 84+  81F4 7B 7B 7B 7B
+ 85+  81F8 F7 37 37 37  	db	$F7, $37, $37, $37, $37, $37, $37, $27
+ 85+  81FC 37 37 37 27
+ 86+  8200
+ 87+  8200 7B 7B 7B 7B  	db	$7B, $7B, $7B, $7B, $7B, $7B, $79, $7B
+ 87+  8204 7B 7B 79 7B
+ 88+  8208 37 37 37 37  	db	$37, $37, $37, $37, $37, $37, $37, $F7
+ 88+  820C 37 37 37 F7
+ 89+  8210 1B 7A 7B 7B  	db	$1B, $7A, $7B, $7B, $7B, $78, $70, $40
+ 89+  8214 7B 78 70 40
+ 90+  8218 97 74 F0 C0  	db	$97, $74, $F0, $C0, $00, $00, $00, $00
+ 90+  821C 00 00 00 00
+ 91+  8220              ;	68
+ 92+  8220 00 6E 6E 6E  	db	$00, $6E, $6E, $6E, $00, $3E, $7E, $7E
+ 92+  8224 00 3E 7E 7E
+ 93+  8228 00 BD BF BF  	db	$00, $BD, $BF, $BF, $80, $B7, $B7, $B7
+ 93+  822C 80 B7 B7 B7
+ 94+  8230 00 FF E1 7F  	db	$00, $FF, $E1, $7F, $FF, $DB, $DB, $DB
+ 94+  8234 FF DB DB DB
+ 95+  8238 DA DB DB DB  	db	$DA, $DB, $DB, $DB, $FF, $EF, $E1, $FF
+ 95+  823C FF EF E1 FF
+ 96+  8240              ;	72
+ 97+  8240 00 00 00 00  	db	$00, $00, $00, $00, $00, $5D, $5D, $5D
+ 97+  8244 00 5D 5D 5D
+ 98+  8248 59 5D 5D 5D  	db	$59, $5D, $5D, $5D, $00, $00, $00, $00
+ 98+  824C 00 00 00 00
+ 99+  8250              ;	74
+100+  8250 00 00 00...  	ds	8
+101+  8258
+102+  8258              ;	75
+103+  8258 00 00 00 00  	db	$00, $00, $00, $00, $00, $00, $00, $00
+103+  825C 00 00 00 00
+104+  8260
+105+  8260              ;	76
+106+  8260 3C 42 B1 B1  	db	$3C, $42, $B1, $B1, $81, $85, $42, $3C
+106+  8264 81 85 42 3C
+107+  8268 38 64 C1 E3  	db	$38, $64, $C1, $E3, $BF, $9C, $40, $34
+107+  826C BF 9C 40 34
+108+  8270 00 FC FE 87  	db	$00, $FC, $FE, $87, $03, $0C, $1C, $F8
+108+  8274 03 0C 1C F8
+109+  8278 38 74 E1 43  	db	$38, $74, $E1, $43, $07, $9E, $C0, $3F
+109+  827C 07 9E C0 3F
+110+  8280
+111+  8280 01 F2 FC 8C  	db	$01, $F2, $FC, $8C, $26, $72, $F1, $E0
+111+  8284 26 72 F1 E0
+112+  8288 82 4C 38 30  	db	$82, $4C, $38, $30, $66, $6F, $67, $63
+112+  828C 66 6F 67 63
+113+  8290 71 39 1D 4D  	db	$71, $39, $1D, $4D, $85, $C5, $E1, $72
+113+  8294 85 C5 E1 72
+114+  8298 26 1C 38 76  	db	$26, $1C, $38, $76, $67, $63, $61, $71
+114+  829C 67 63 61 71
+115+  82A0
+116+  82A0 38 18 4D 8C  	db	$38, $18, $4D, $8C, $8C, $C1, $72, $3C
+116+  82A4 8C C1 72 3C
+117+  82A8              ;	85
+118+  82A8 00 00 00...  	ds	24
+119+  82C0
+120+  82C0              ;	88
+121+  82C0 00 00 07 05  	db	$00, $00, $07, $05, $0F, $18, $30, $60
+121+  82C4 0F 18 30 60
+122+  82C8 04 08 10 00  	db	$04, $08, $10, $00, $00, $00, $00, $00
+122+  82CC 00 00 00 00
+123+  82D0 00 0A 04 0A  	db	$00, $0A, $04, $0A, $10, $20, $40, $80
+123+  82D4 10 20 40 80
+124+  82D8 00 1C 3E 7F  	db	$00, $1C, $3E, $7F, $49, $77, $36, $36
+124+  82DC 49 77 36 36
+125+  82E0
+126+  82E0              ;	92 Pirat
+127+  82E0 00 03 0F 3C  	db	$00, $03, $0F, $3C, $5B, $AE, $7D, $3D
+127+  82E4 5B AE 7D 3D
+128+  82E8 00 C0 F0 40  	db	$00, $C0, $F0, $40, $F8, $20, $D8, $40
+128+  82EC F8 20 D8 40
+129+  82F0 56 0B 04 0A  	db	$56, $0B, $04, $0A, $25, $42, $A5, $D0
+129+  82F4 25 42 A5 D0
+130+  82F8 3E FC C0 A8  	db	$3E, $FC, $C0, $A8, $44, $FA, $54, $A9
+130+  82FC 44 FA 54 A9
+131+  8300
+132+  8300 03 07 0F 1D  	db	$03, $07, $0F, $1D, $1E, $2D, $08, $04
+132+  8304 1E 2D 08 04
+133+  8308 F8 70 F8 72  	db	$F8, $70, $F8, $72, $7A, $72, $7A, $76
+133+  830C 7A 72 7A 76
+134+  8310 24 40 00 40  	db	$24, $40, $00, $40, $A0, $40, $80, $40
+134+  8314 A0 40 80 40
+135+  8318 04 08 0C 0C  	db	$04, $08, $0C, $0C, $0C, $06, $16, $0C
+135+  831C 0C 06 16 0C
+136+  8320
+137+  8320 F6 76 F0 60  	db	$F6, $76, $F0, $60, $05, $2A, $5F, $3B
+137+  8324 05 2A 5F 3B
+138+  8328 80 C0 80 40  	db	$80, $C0, $80, $40, $00, $80, $40, $80
+138+  832C 00 80 40 80
+139+  8330 79 51 A9 00  	db	$79, $51, $A9, $00, $28, $78, $70, $60
+139+  8334 28 78 70 60
+140+  8338 C0 A0 C0 00  	db	$C0, $A0, $C0, $00, $60, $30, $70, $20
+140+  833C 60 30 70 20
+141+  8340
+142+  8340 30 18 10 18  	db	$30, $18, $10, $18, $30, $F8, $DC, $00
+142+  8344 30 F8 DC 00
+143+  8348 30 30 38 2C  	db	$30, $30, $38, $2C, $77, $2B, $00, $00
+143+  834C 77 2B 00 00
+144+  8350
+145+  8350
+# file closed: tiles.dat
+ 17   8350
+ 18   8350              ; ================
+ 19   8350              ;  Code Start
+ 20   8350              ; ================
+ 21   8350              CodeStart:
+ 22   8350 F3           		di
+ 23   8351
+ 24   8351              		include	init.asm
+# file opened: init.asm
+  1+  8351              ; ==============
+  2+  8351              ;  Init
+  3+  8351              ; ==============
+  4+  8351              		BORDER_COLOR BLACK
+  4+  8351 3E 00       >		ld	a,BLACK
+  4+  8353 D3 FE       >		out	(0FEh),a
+  5+  8355              		SET_COLOR	BLACK_BGD OR BLACK, ATR_3D_TOP, 24
+  5+  8355 11 00 00    >		ld de, BLACK_BGD OR BLACK * 256 + BLACK_BGD OR BLACK
+  5+  8358 21 00 00    >		ld	hl,0000h
+  5+  835B 39          >		add	hl,sp			; save SP
+  5+  835C 31 00 5B    >		ld	sp,ATR_3D_TOP
+  5+  835F 06 18       >		ld	b,24
+  5+  8361             >.colour_block:
+  5+  8361             >	REPT	16				; zeruje 32 bajty na obrot
+  5+  8361 D5          >		push	de
+  5+  8362 D5          >		push	de
+  5+  8363 D5          >		push	de
+  5+  8364 D5          >		push	de
+  5+  8365 D5          >		push	de
+  5+  8366 D5          >		push	de
+  5+  8367 D5          >		push	de
+  5+  8368 D5          >		push	de
+  5+  8369 D5          >		push	de
+  5+  836A D5          >		push	de
+  5+  836B D5          >		push	de
+  5+  836C D5          >		push	de
+  5+  836D D5          >		push	de
+  5+  836E D5          >		push	de
+  5+  836F D5          >		push	de
+  5+  8370 D5          >		push	de
+  5+  8371             >	ENDR
+  5+  8371 10 EE       >		djnz	.colour_block
+  5+  8373 F9          >		ld	sp,hl			; restore SP
+  6+  8374              		CLEAR_LINES SCREEN_TOP, 191
+  6+  8374 11 00 00    >		ld	de,0000h
+  6+  8377 21 00 00    >		ld	hl,0000h
+  6+  837A 39          >		add	hl,sp			; save SP
+  6+  837B 31 00 58    >		ld	sp,SCREEN_TOP	; czysci od gory
+  6+  837E 06 BF       >		ld	b,191		; 192 = 6144 / ( 16 x 2 )
+  6+  8380             >.clear_block:
+  6+  8380             >	REPT	16				; zeruje 32 bajty na obrot
+  6+  8380 D5          >		push	de
+  6+  8381 D5          >		push	de
+  6+  8382 D5          >		push	de
+  6+  8383 D5          >		push	de
+  6+  8384 D5          >		push	de
+  6+  8385 D5          >		push	de
+  6+  8386 D5          >		push	de
+  6+  8387 D5          >		push	de
+  6+  8388 D5          >		push	de
+  6+  8389 D5          >		push	de
+  6+  838A D5          >		push	de
+  6+  838B D5          >		push	de
+  6+  838C D5          >		push	de
+  6+  838D D5          >		push	de
+  6+  838E D5          >		push	de
+  6+  838F D5          >		push	de
+  6+  8390             >	ENDR
+  6+  8390 10 EE       >		djnz	.clear_block
+  6+  8392 F9          >		ld	sp,hl			; restore SP
+  7+  8393
+  8+  8393 CD 95 88     		call	print_frames
+  9+  8396
+ 10+  8396              		; kolory okna powiadomien
+ 11+  8396 3E 07        		ld	a,MSG_ATR
+ 12+  8398 06 02        		ld	b,MSG_HEIGHT
+ 13+  839A 0E 11        		ld	c,MSG_WIDTH
+ 14+  839C 11 00 09     		ld	de,MSG_YX
+ 15+  839F CD 72 88     		call set_atr_block
+ 16+  83A2
+ 17+  83A2              		; kolory ramki mapy
+ 18+  83A2 3E 04        		ld	a,FOV_FRAME_ATR
+ 19+  83A4 06 0B        		ld	b,FOV_FRAME_H
+ 20+  83A6 0E 0B        		ld	c,FOV_FRAME_W
+ 21+  83A8 11 03 0C     		ld	de,FOV_FRAME_YX
+ 22+  83AB CD 72 88     		call set_atr_block
+ 23+  83AE
+ 24+  83AE              ;		; kolory ramki	3D
+ 25+  83AE 3E 03        		ld	a,W3D_FRAME_ATR
+ 26+  83B0 06 08        		ld	b,W3D_FRAME_H
+ 27+  83B2 0E 0B        		ld	c,W3D_FRAME_W
+ 28+  83B4 11 03 00     		ld	de,W3D_FRAME_YX
+ 29+  83B7 CD 72 88     		call set_atr_block
+ 30+  83BA
+ 31+  83BA              		; kolory okna mapy
+ 32+  83BA 3E 02        		ld	a,FOV_ATR
+ 33+  83BC 06 09        		ld	b,FOV_HEIGHT
+ 34+  83BE 0E 09        		ld	c,FOV_WIDTH
+ 35+  83C0 11 04 0D     		ld	de,FOV_YX
+ 36+  83C3 CD 72 88     		call set_atr_block
+ 37+  83C6
+ 38+  83C6              		; kolory okna statystyk
+ 39+  83C6 3E 06        		ld	a,STS_ATR
+ 40+  83C8 06 07        		ld	b,STS_HEIGHT
+ 41+  83CA 0E 09        		ld	c,STS_WIDTH
+ 42+  83CC 11 17 01     		ld	de,STS_YX
+ 43+  83CF CD 72 88     		call set_atr_block
+ 44+  83D2
+ 45+  83D2              		; kolory okna przedmiotow
+ 46+  83D2 3E 05        		ld	a,ITM_ATR
+ 47+  83D4 06 03        		ld	b,ITM_HEIGHT
+ 48+  83D6 0E 09        		ld	c,ITM_WIDTH
+ 49+  83D8 11 17 09     		ld	de,ITM_YX
+ 50+  83DB CD 72 88     		call set_atr_block
+ 51+  83DE
+ 52+  83DE              ; ------ Oblicza rozmiar mapy --------
+ 53+  83DE 2A E9 92     		ld	hl,(map.width)
+ 54+  83E1 44           		ld	b,h
+ 55+  83E2 4D           		ld	c,l
+ 56+  83E3 CD 5C 92     		call	mul8
+ 57+  83E6 22 EB 92     		ld	(map.size),hl
+ 58+  83E9
+ 59+  83E9              ; ------ Czyta MAPe i inicjalizuje obiekty ( drzwi i uktyte przejscia ) ------
+ 60+  83E9 DD 21 94 93  		ld	ix,doors
+ 61+  83ED FD 21 B4 93  		ld	iy,passages
+ 62+  83F1 21 91 94     		ld	hl,MAP
+ 63+  83F4 11 00 00     		ld	de,0				; offset obiektow
+ 64+  83F7 ED 4B EB 92  		ld	bc,(map.size)
+ 65+  83FB              _next_mapchar:
+ 66+  83FB 7E           		ld	a,(hl)
+ 67+  83FC FE 2B        		cp	C_DOOR_CHAR
+ 68+  83FE 28 16        		jr	z,_init_door
+ 69+  8400 FE 2F        		cp	O_DOOR_CHAR
+ 70+  8402 28 12        		jr	z,_init_door
+ 71+  8404 FE 3D        		cp	PASSAGE_CHAR
+ 72+  8406 20 18        		jr	nz,_inc_counters
+ 73+  8408              		; --- ukryte przejscia ----
+ 74+  8408 FD 73 00     		ld	(iy),e
+ 75+  840B FD 72 01     		ld	(iy+1),d
+ 76+  840E FD 23        		inc	iy
+ 77+  8410 FD 23        		inc	iy
+ 78+  8412 36 23        		ld	(hl),WALL_CHAR
+ 79+  8414 18 0A        		jr	_inc_counters
+ 80+  8416              		; ---	drzwi   ---
+ 81+  8416              		; 0 - MAP Ofs lsb, 1 - msb, 2 - open(0), close(1)
+ 82+  8416              _init_door:
+ 83+  8416 DD 73 00     		ld	(ix),e				; offset obiektu lsb
+ 84+  8419 DD 72 01     		ld	(ix+1),d			; msb
+ 85+  841C DD 23        		inc	ix
+ 86+  841E DD 23        		inc	ix
+ 87+  8420              		; -----------------
+ 88+  8420              _inc_counters:
+ 89+  8420 23           		inc	hl
+ 90+  8421 13           		inc	de
+ 91+  8422 0B           		dec	bc
+ 92+  8423 78           		ld	a,b
+ 93+  8424 B1           		or	c
+ 94+  8425 20 D4        		jr	nz,_next_mapchar
+ 95+  8427
+ 96+  8427              ; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
+ 97+  8427 3A ED 92     		ld	a,(hero.mapY)
+ 98+  842A 4F           		ld	c,a
+ 99+  842B 3A E9 92     		ld	a,(map.width)
+100+  842E 47           		ld	b,a
+101+  842F CD 5C 92     		call	mul8
+102+  8432 3A EE 92     		ld	a,(hero.mapX)
+103+  8435 16 00        		ld	d,0
+104+  8437 5F           		ld	e,a
+105+  8438 19           		add	hl,de
+106+  8439 22 F0 92     		ld	(hero.offset),hl
+107+  843C
+108+  843C
+109+  843C              ; Oblicza i wypelnia tabele neighbor_offs
+110+  843C DD 21 05 93  		ld	ix,neighbor_offs
+111+  8440 3A E9 92     		ld	a,(map.width)
+112+  8443 DD 77 02     		ld	(ix+2),a
+113+  8446 ED 44        		neg
+114+  8448 DD 77 00     		ld	(ix),a
+115+  844B
+116+  844B              ; Oblicza i wypelnia tabele fov_offsets
+117+  844B              ; W zaleznosci od kierunku patrzenia kazde tile w polu widzenia
+118+  844B              ; dostanie swoj offset wzgledem Hero
+119+  844B CD 53 8A     		call	calc_fov
+120+  844E              ; Wbija biezace statystyki hero do stringow stat_info
+121+  844E CD 03 87     		call	update_info_strings
+122+  8451 CD 41 87     		call	print_info
+123+  8454
+124+  8454
+# file closed: init.asm
+ 25   8454
+ 26   8454              ; ===============  M A I N    L O O P =================
+ 27   8454
+ 28   8454 C3 67 84     		jp	_begin
+ 29   8457
+ 30   8457              refresh:
+ 31   8457              		; czyszczenie okna fov
+ 32   8457 21 A4 48     		ld	hl,FOV_ADR
+ 33   845A 06 09        		ld	b,FOV_HEIGHT
+ 34   845C CD FF 87     		call	clear_txtlines
+ 35   845F
+ 36   845F              		; czyszczenie okna 3d
+ 37   845F 21 24 40     		ld	hl,W3D_ADR
+ 38   8462 06 06        		ld	b,W3D_HEIGHT
+ 39   8464 CD FF 87     		call	clear_txtlines
+ 40   8467              _begin
+ 41   8467              		; "wygaszone" okno 3D przy rysowaniu
+ 42   8467 3E 00        		ld	a,OFF_ATR
+ 43   8469 06 06        		ld	b,W3D_HEIGHT
+ 44   846B 0E 09        		ld	c,W3D_WIDTH
+ 45   846D 11 04 01     		ld	de, W3D_YX
+ 46   8470 CD 72 88     		call set_atr_block
+ 47   8473
+ 48   8473 CD DB 86     		call	check_flags
+ 49   8476
+ 50   8476              		; -----------------------
+ 51   8476              		; Pole widzenia na ekran
+ 52   8476              		; -----------------------
+ 53   8476
+ 54   8476 CD 62 89     		call	field_of_view		; fov.z80
+ 55   8479
+ 56   8479              		; -----------------------
+ 57   8479              		;  "widzialnosc" okna 3D
+ 58   8479              		; -----------------------
+ 59   8479 3E 41        		ld	a,W3D_ATR
+ 60   847B 06 06        		ld	b,W3D_HEIGHT
+ 61   847D 0E 09        		ld	c,W3D_WIDTH
+ 62   847F 11 04 01     		ld	de, W3D_YX
+ 63   8482 CD 72 88     		call set_atr_block
+ 64   8485              ;		atrbuf_2_atr
+ 65   8485
+ 66   8485              		; --------------
+ 67   8485              		; Hero na ekran
+ 68   8485              		; --------------
+ 69   8485 21 F9 92     		ld	hl,hero_i		; ikona hero
+ 70   8488 3A EF 92     		ld	a,(hero.direction)		; w zaleznosci
+ 71   848B 06 00        		ld	b,0				; od kierunku
+ 72   848D 4F           		ld	c,a				; i zwrotu
+ 73   848E 09           		add	hl,bc			; ^ > v <
+ 74   848F 7E           		ld	a,(hl)
+ 75   8490 01 08 11     		ld	bc,HERO_YX		; stala pozycja HERO na ekranie
+ 76   8493
+ 77   8493 67           		ld	h,a				; SAVE char
+ 78   8494 CD 70 87     		call	gotoyx
+ 79   8497 7C           		ld	a,h				; RESTORE char
+ 80   8498
+ 81   8498 CD 84 87     		call	pchar
+ 82   849B
+ 83   849B 3E 06        		ld	a, HERO_ATR
+ 84   849D 11 08 11     		ld	de,HERO_YX
+ 85   84A0 0E 01        		ld	c,1					; jeden znak
+ 86   84A2 CD 5A 88     		call	set_atr_line
+ 87   84A5
+ 88   84A5              wait_release:
+ 89   84A5 CD A5 92     		call	scan_keyboard
+ 90   84A8 B7           		or	a
+ 91   84A9 20 FA        		jr	nz,wait_release
+ 92   84AB
+ 93   84AB              key_press:
+ 94   84AB CD A5 92     		call	scan_keyboard
+ 95   84AE
+ 96   84AE FE 00        		cp	0
+ 97   84B0 CA AB 84     		jp	z,key_press
+ 98   84B3 FE 01        		cp	1
+ 99   84B5 CA 4E 85     		jp	z,move			; bit 0: I
+100   84B8 FE 02        		cp	2
+101   84BA 28 20        		jr	z,trn_r			; bit 1: L
+102   84BC FE 04        		cp	4
+103   84BE CA 00 85     		jp	z,move_door		; bit 2: K
+104   84C1 FE 08        		cp	8
+105   84C3 CA EE 84     		jp	z,trn_l			; bit 3: J
+106   84C6 FE 10        		cp	16
+107   84C8 CA A0 85     		jp	z,search		; bit 4: S
+108   84CB FE 20        		cp	32
+109   84CD CA F7 85     		jp	z,take_item		; bit 5: T
+110   84D0 FE 40        		cp	64
+111   84D2 CA 2D 8D     		jp	z,talk_figure	; bit 6: C
+112   84D5 FE 80        		cp	128
+113   84D7 CA 65 87     		jp	z,teleport		; bit 7: P
+114   84DA
+115   84DA
+116   84DA 18 CF        		jr	key_press
+117   84DC
+118   84DC              ; -------------------------
+119   84DC              trn_r:
+120   84DC CD 7B 88     		call	message_area_clear
+121   84DF 21 EF 92     		ld	hl,hero.direction
+122   84E2 34           		inc	(hl)
+123   84E3 7E           		ld	a,(hl)
+124   84E4 FE 04        		cp	WEST+1
+125   84E6 C2 57 84     		jp	nz,refresh
+126   84E9 36 00        		ld	(hl),NORTH
+127   84EB C3 57 84     		jp	refresh
+128   84EE              trn_l:
+129   84EE CD 7B 88     		call	message_area_clear
+130   84F1 21 EF 92     		ld	hl,hero.direction
+131   84F4 35           		dec	(hl)
+132   84F5 7E           		ld	a,(hl)
+133   84F6 FE FF        		cp	NORTH-1
+134   84F8 C2 57 84     		jp	nz,refresh
+135   84FB 36 03        		ld	(hl),WEST
+136   84FD C3 57 84     		jp	refresh
+137   8500
+138   8500              ; otwiera lub zamyka drzwi
+139   8500              move_door:
+140   8500 CD 7B 88     		call	message_area_clear
+141   8503 CD 84 85     		call	right_before
+142   8506 FE 2B        		cp	C_DOOR_CHAR
+143   8508 28 10        		jr	z,_print_door_nr
+144   850A FE 2F        		cp	O_DOOR_CHAR
+145   850C 28 0C        		jr	z,_print_door_nr
+146   850E              		PRINT_STR	MSG_LINE1 + 2, msg_nodoor
+146   850E 11 22 48    >		ld	de,MSG_LINE1 + 2
+146   8511 01 12 94    >		ld	bc,msg_nodoor
+146   8514 CD EA 87    >		call	pstring
+147   8517 C3 A5 84     		jp	wait_release			; nie ma tutaj drzwi! Wypad
+148   851A              _print_door_nr
+149   851A E5           		push	hl				; save adresu drzwi
+150   851B CD C5 86     		call	room_label
+151   851E              		PRINT_STR	MSG_LINE1 + 3, msg_door
+151   851E 11 23 48    >		ld	de,MSG_LINE1 + 3
+151   8521 01 06 94    >		ld	bc,msg_door
+151   8524 CD EA 87    >		call	pstring
+152   8527 E1           		pop		hl				; restore
+153   8528 7E           		ld	a,(hl)
+154   8529 FE 2F        		cp	O_DOOR_CHAR
+155   852B 28 16        		jr	z,close_door
+156   852D
+157   852D              open_door:
+158   852D CD 2C 86     		call	check_key
+159   8530 28 05        		jr	z,_no_key
+160   8532 36 2F        		ld	(hl),O_DOOR_CHAR
+161   8534 C3 57 84     		jp	refresh
+162   8537              _no_key
+163   8537              		PRINT_STR	MSG_LINE2 + 3, msg_nokey
+163   8537 11 43 48    >		ld	de,MSG_LINE2 + 3
+163   853A 01 20 94    >		ld	bc,msg_nokey
+163   853D CD EA 87    >		call	pstring
+164   8540 C3 A5 84     		jp	wait_release
+165   8543              close_door:
+166   8543 36 2B        		ld	(hl),C_DOOR_CHAR
+167   8545 3A D4 93     		ld	a,(door_nr)
+168   8548 CD 37 86     		call	remove_key
+169   854B C3 57 84     		jp	refresh
+170   854E
+171   854E
+172   854E              ;-------------------------------------------------
+173   854E              ; Zmienia pozycje Hero
+174   854E              ; IN: DE - nowa pozycja ( offset wzgl. MAP )
+175   854E              ;-------------------------------------------------
+176   854E              move:
+177   854E CD 84 85     		call	right_before
+178   8551
+179   8551 FE 23        		cp	WALL_CHAR
+180   8553 CA AB 84     		jp	z,key_press
+181   8556 FE 2B        		cp	C_DOOR_CHAR
+182   8558 CA AB 84     		jp	z,key_press
+183   855B FE 26        		cp	FIGURE_CHAR
+184   855D CA AB 84     		jp	z,key_press
+185   8560
+186   8560 ED 53 F0 92  		ld	(hero.offset),de	; Hero new offset
+187   8564 21 FD 92     		ld	hl,hero_s	; /
+188   8567 3A EF 92     		ld	a,(hero.direction)	; Przesuniecie kursora
+189   856A 87           		add	a,a		; do nowej pozycji
+190   856B 5F           		ld	e,a		; Hero
+191   856C 16 00        		ld	d,00h
+192   856E 19           		add	hl,de
+193   856F 3A EE 92     		ld	a,(hero.mapX)
+194   8572 86           		add	a,(hl)
+195   8573 32 EE 92     		ld	(hero.mapX),a
+196   8576 23           		inc	hl
+197   8577 3A EE 92     		ld	a,(hero.mapX)
+198   857A 86           		add	a,(hl)
+199   857B 32 ED 92     		ld	(hero.mapY),a	; \____________
+200   857E
+201   857E CD 7B 88     		call	message_area_clear
+202   8581 C3 57 84     		jp	refresh
+203   8584
+204   8584              ;-----------------------------------------
+205   8584              ; Funkja wypluwa:
+206   8584              ; w A - char Tile bezposrednio przed Hero
+207   8584              ; e DE - jego OFFSET wzgl. MAP
+208   8584              ; w HL - jego ADRESS
+209   8584              ;-----------------------------------------
+210   8584              right_before:
+211   8584 21 05 93     		ld	hl,neighbor_offs
+212   8587 ED 5B EF 92  		ld	de,(hero.direction)
+213   858B 16 00        		ld	d,00h
+214   858D 19           		add	hl,de		; adres offset'u Tile wzgl Hero
+215   858E 5E           		ld	e,(hl)
+216   858F CB 7B        		bit	7,e
+217   8591 28 02        		jr	z,_addit
+218   8593 16 FF        		ld	d,0FFh
+219   8595 2A F0 92     _addit	ld	hl,(hero.offset)
+220   8598 19           		add	hl,de
+221   8599 EB           		ex	de,hl		; offset Tile wzgl mapy
+222   859A 21 91 94     		ld	hl,MAP
+223   859D 19           		add	hl,de		; ADRES TILE PRZED HERO !
+224   859E 7E           		ld	a,(hl)		; a w A jego ikona (ascii)
+225   859F C9           		ret
+226   85A0
+227   85A0              ;--------------------------------------------
+228   85A0              ; Szuka ukrytych przejsc itp.
+229   85A0              ;--------------------------------------------
+230   85A0              search:
+231   85A0 CD 7B 88     		call	message_area_clear
+232   85A3              		PRINT_STR	MSG_LINE1 + 2, msg_searching
+232   85A3 11 22 48    >		ld	de,MSG_LINE1 + 2
+232   85A6 01 D9 93    >		ld	bc,msg_searching
+232   85A9 CD EA 87    >		call	pstring
+233   85AC CD 84 85     		call 	right_before
+234   85AF FE 26        		cp	FIGURE_CHAR
+235   85B1 20 15        		jr	nz,_no_figure
+236   85B3              		PRINT_STR	MSG_LINE1 + 1, msg_figure1
+236   85B3 11 21 48    >		ld	de,MSG_LINE1 + 1
+236   85B6 01 6F 94    >		ld	bc,msg_figure1
+236   85B9 CD EA 87    >		call	pstring
+237   85BC              		PRINT_STR	MSG_LINE2 + 4, msg_figure2
+237   85BC 11 44 48    >		ld	de,MSG_LINE2 + 4
+237   85BF 01 7F 94    >		ld	bc,msg_figure2
+237   85C2 CD EA 87    >		call	pstring
+238   85C5 C3 A5 84     		jp	wait_release
+239   85C8              _no_figure
+240   85C8 E5           		push	hl					; save adres char przed Hero
+241   85C9
+242   85C9              		; ukryte przejscie ?
+243   85C9 06 10        		ld	b,OBJ_MAX
+244   85CB 21 B4 93     		ld	hl,passages
+245   85CE CD ED 86     		call	check_offset16		; w HL msb offsety znalezionego objektu
+246   85D1
+247   85D1 D1           		pop		de					; restore
+248   85D2
+249   85D2 FE FF        		cp	0FFh					; a moze nic tu nie ma?
+250   85D4 CA EB 85     		jp	z,_nothing_here
+251   85D7
+252   85D7 3E 20        		ld	a,FLOOR_CHAR
+253   85D9 12           		ld	(de),a					; jesli przejcie to zburz mur
+254   85DA 36 00        		ld	(hl),0					; Zeruje ten offset na liscie
+255   85DC 2B           		dec	hl						; nieodkrytych
+256   85DD 36 00        		ld	(hl),0					; przejsc
+257   85DF              		PRINT_STR	MSG_LINE2 + 2, msg_psgfinded
+257   85DF 11 42 48    >		ld	de,MSG_LINE2 + 2
+257   85E2 01 F7 93    >		ld	bc,msg_psgfinded
+257   85E5 CD EA 87    >		call	pstring
+258   85E8 C3 57 84     		jp	refresh
+259   85EB
+260   85EB              _nothing_here
+261   85EB              		PRINT_STR	MSG_LINE2 + 1, msg_nothing
+261   85EB 11 41 48    >		ld	de,MSG_LINE2 + 1
+261   85EE 01 E7 93    >		ld	bc,msg_nothing
+261   85F1 CD EA 87    >		call	pstring
+262   85F4 C3 A5 84     		jp	wait_release
+263   85F7
+264   85F7              ; ----------------------------------------------------
+265   85F7              ; Jak cos jest pod nogami wsadza do plecaka
+266   85F7              ; ----------------------------------------------------
+267   85F7              take_item:
+268   85F7 CD 7B 88     		call	message_area_clear
+269   85FA              		PRINT_STR	MSG_LINE1 + 2, msg_floor
+269   85FA 11 22 48    >		ld	de,MSG_LINE1 + 2
+269   85FD 01 53 94    >		ld	bc,msg_floor
+269   8600 CD EA 87    >		call	pstring
+270   8603 CD 22 86     		call	search_floor
+271   8606 79           		ld	a,c
+272   8607 FE 7E        		cp	KEY_CHAR
+273   8609 CA 40 86     		jp	z,take_key
+274   860C FE 28        		cp	WEAPON_CHAR
+275   860E CA 57 86     		jp	z,take_weapon
+276   8611 FE 5B        		cp	ARMOUR_CHAR
+277   8613 CA 77 86     		jp	z,take_armour
+278   8616
+279   8616              		; jesli nic nie ma to komunikat ze nic nie ma
+280   8616              		PRINT_STR	MSG_LINE2 + 2, msg_dust
+280   8616 11 42 48    >		ld	de,MSG_LINE2 + 2
+280   8619 01 61 94    >		ld	bc,msg_dust
+280   861C CD EA 87    >		call	pstring
+281   861F C3 A5 84     		jp wait_release
+282   8622
+283   8622              ; ----------------------------------------------------
+284   8622              ; Sprawdza co lezy pod nogami.
+285   8622              ; OUT:	C - char przedmiotu
+286   8622              ;		HL - jego adress
+287   8622              ;		DE - i offset
+288   8622              ; ----------------------------------------------------
+289   8622              search_floor:
+290   8622 ED 5B F0 92  		ld	de,(hero.offset)
+291   8626 21 91 94     		ld	hl,MAP
+292   8629 19           		add	hl,de
+293   862A 4E           		ld	c,(hl)
+294   862B C9           		ret
+295   862C
+296   862C              ; --------------------------------------
+297   862C              ; Sprawdza czy jest klucz do tych drzwi
+298   862C              ; OUT:	A = 0 nie ma klucza, A != 0 jest
+299   862C              ; --------------------------------------
+300   862C              check_key:
+301   862C 3A D4 93     		ld	a,(door_nr)
+302   862F 11 F7 92     		ld	de,hero.bag.keys
+303   8632 CD 95 92     		call	nr_to_bit
+304   8635 A1           		and	c
+305   8636 C9           		ret
+306   8637
+307   8637              ; ----------------------------------------------------
+308   8637              ; Wyjmuje klucz z otwartych drzwi i laduje do plecaka
+309   8637              ; IN:	A - nr drzwi
+310   8637              ; ----------------------------------------------------
+311   8637              remove_key:
+312   8637 11 F7 92     		ld	de,hero.bag.keys
+313   863A CD 95 92     		call	nr_to_bit
+314   863D B1           		or	c
+315   863E 12           		ld	(de),a
+316   863F C9           		ret
+317   8640
+318   8640              ; ----------------------------------------------------
+319   8640              ; Podnosi klucz z gleby i laduje do plecaka
+320   8640              ; IN:	C - char klucza
+321   8640              ; ----------------------------------------------------
+322   8640              take_key:
+323   8640 CD A2 86     		call	search_map
+324   8643 21 11 96     		ld	hl,key_door_nr
+325   8646 19           		add	hl,de
+326   8647 7E           		ld	a,(hl)
+327   8648 CD 37 86     		call	remove_key
+328   864B              		PRINT_STR	MSG_LINE2 + 4, msg_key
+328   864B 11 44 48    >		ld	de,MSG_LINE2 + 4
+328   864E 01 2C 94    >		ld	bc,msg_key
+328   8651 CD EA 87    >		call	pstring
+329   8654 C3 A5 84     		jp	wait_release
+330   8657
+331   8657              ; ----------------------------------------------------
+332   8657              ; Podnosi bron z gleby i laduje do plecaka
+333   8657              ; IN:	C - char broni
+334   8657              ; ----------------------------------------------------
+335   8657              take_weapon:
+336   8657 CD A2 86     		call	search_map
+337   865A 21 13 96     		ld	hl,weapon_pow
+338   865D 19           		add	hl,de
+339   865E 7E           		ld	a,(hl)
+340   865F 32 F5 92     		ld	(hero.bag.weapon),a
+341   8662              		PRINT_STR	MSG_LINE2 + 2, msg_weapon
+341   8662 11 42 48    >		ld	de,MSG_LINE2 + 2
+341   8665 01 37 94    >		ld	bc,msg_weapon
+341   8668 CD EA 87    >		call	pstring
+342   866B 21 F5 92     		ld	hl,hero.bag.weapon
+343   866E 11 F3 92     		ld	de,hero.stat.str
+344   8671 CD 97 86     		call	equip
+345   8674 C3 A5 84     		jp	wait_release
+346   8677
+347   8677              ; ----------------------------------------------------
+348   8677              ; Podnosi zbroje z gleby i laduje do plecaka
+349   8677              ; IN:	C - char zbroi
+350   8677              ; ----------------------------------------------------
+351   8677              take_armour:
+352   8677 CD A2 86     		call	search_map
+353   867A 21 15 96     		ld	hl,armour_pow
+354   867D 19           		add	hl,de
+355   867E 7E           		ld	a,(hl)
+356   867F 32 F6 92     		ld	(hero.bag.armour),a
+357   8682 21 F6 92     		ld	hl,hero.bag.armour
+358   8685 11 F4 92     		ld	de,hero.stat.def
+359   8688 CD 97 86     		call	equip
+360   868B              		PRINT_STR	MSG_LINE2 + 2, msg_armour
+360   868B 11 42 48    >		ld	de,MSG_LINE2 + 2
+360   868E 01 45 94    >		ld	bc,msg_armour
+360   8691 CD EA 87    >		call	pstring
+361   8694 C3 A5 84     		jp	wait_release
+362   8697
+363   8697              ; ----------------------------------------------------
+364   8697              ; Wyciaga item z plecaka celem uzywania
+365   8697              ; IN:	HL - adres item w plecaku
+366   8697              ;		DE - adres statystyki, na ktora wplywa
+367   8697              ; ----------------------------------------------------
+368   8697              equip:
+369   8697 4E           		ld	c,(hl)
+370   8698 1A           		ld	a,(de)
+371   8699 81           		add	a,c
+372   869A 12           		ld	(de),a
+373   869B CD 03 87     		call	update_info_strings
+374   869E CD 41 87     		call	print_info
+375   86A1 C9           		ret
+376   86A2
+377   86A2              ; ----------------------------------------------------
+378   86A2              ; Przeszukuje mape w poszukiwaniu char'a
+379   86A2              ; IN:	C - char do znalezienia
+380   86A2              ;		HL - adres do sprawdzenia
+381   86A2              ; OUT:	B, DE	- ktory w kolejnosci na MAP'e
+382   86A2              ; ----------------------------------------------------
+383   86A2              search_map:
+384   86A2 EB           		ex	de,hl				; adres do znalezienia w DE
+385   86A3 06 00        		ld	b,0					; licznik C char'ow
+386   86A5 21 91 94     		ld	hl,MAP
+387   86A8              _not_this
+388   86A8 7E           		ld	a,(hl)
+389   86A9 B9           		cp	c
+390   86AA 28 03        		jr	z,_maybe_this
+391   86AC 23           		inc	hl
+392   86AD 18 F9        		jr	_not_this
+393   86AF              _maybe_this
+394   86AF 7B           		ld	a,e
+395   86B0 BD           		cp	l
+396   86B1 28 04        		jr	z,_check_msb
+397   86B3 23           		inc hl
+398   86B4 04           		inc	b					; char ten, ale nie ten adres
+399   86B5 18 F1        		jr _not_this			; jednak nie
+400   86B7              _check_msb
+401   86B7 7A           		ld	a,d
+402   86B8 BC           		cp	h
+403   86B9 28 04        		jr	z,_this_one
+404   86BB 23           		inc	hl
+405   86BC 04           		inc	b					; char ten, ale nie ten adres
+406   86BD 18 E9        		jr _not_this			; no nie
+407   86BF              _this_one
+408   86BF 36 20        		ld	(hl),FLOOR_CHAR		; wziety z gleby
+409   86C1 16 00        		ld	d,0
+410   86C3 58           		ld	e,b
+411   86C4 C9           		ret
+412   86C5
+413   86C5              ;-------------------------------------------------------
+414   86C5              ; Przeszukuje po offsecie liste wszystkich drzwi
+415   86C5              ; Drukuje nr na drzwiach przed Hero i wbija do zmiennej
+416   86C5              ; IN:  DE - offset drzwi ( wzgl. map )
+417   86C5              ; USED : A, BC, HL
+418   86C5              ;-------------------------------------------------------
+419   86C5              room_label:
+420   86C5 06 10        		ld	b,OBJ_MAX
+421   86C7 21 94 93     		ld	hl,doors
+422   86CA CD ED 86     		call	check_offset16
+423   86CD 3C           		inc	a
+424   86CE 32 D4 93     		ld	(door_nr),a			; do zmiennej
+425   86D1 CD 71 92     		call	h2asci			; zamiana na ascii do druku
+426   86D4 21 0F 94     		ld	hl,msg_door_nr
+427   86D7 71           		ld	(hl),c
+428   86D8 23           		inc	hl
+429   86D9 70           		ld	(hl),b
+430   86DA C9           		ret
+431   86DB
+432   86DB              ; ------------------------
+433   86DB              ; Sprawdza flagi
+434   86DB              ; ------------------------
+435   86DB              check_flags:
+436   86DB 3A D6 93     		ld	a,(game_flags)
+437   86DE E6 80        		and	%10000000
+438   86E0 28 0A        		jr	z,_clr_flags
+439   86E2 E6 7F        		and	%01111111
+440   86E4 32 D6 93     		ld	(game_flags),a
+441   86E7 2A D7 93     		ld	hl,(flash_adr)
+442   86EA 36 02        		ld	(hl),FOV_ATR
+443   86EC              _clr_flags
+444   86EC C9           		ret
+445   86ED
+446   86ED              ;------------------------------------------------------------------
+447   86ED              ; szuka 16-bitowego offsetu na liscie objektow
+448   86ED              ; IN:	DE - offset do wyszukania
+449   86ED              ; 	HL - adres listy offsetow objektow ( H - msb )
+450   86ED              ; OUT:	A  - jesli FFh = nie znaleziony offset
+451   86ED              ;	, w przeciwnym razie index znalezionego objektu na liscie ( od 0 )
+452   86ED              ; USED:	A, C, HL
+453   86ED              ;------------------------------------------------------------------
+454   86ED              check_offset16:
+455   86ED 48           		ld	c,b		; save licznik objektow
+456   86EE 7B           		ld	a,e
+457   86EF              _cell
+458   86EF BE           		cp	(hl)
+459   86F0 23           		inc	hl
+460   86F1 20 07        		jr	nz,_msb
+461   86F3 7A           		ld	a,d
+462   86F4 BE           		cp	(hl)
+463   86F5 20 02        		jr	nz,_lsb
+464   86F7 18 07        		jr	_finded
+465   86F9              _lsb
+466   86F9 7B           		ld	a,e
+467   86FA              _msb
+468   86FA 23           		inc	hl
+469   86FB 10 F2        		djnz	_cell
+470   86FD 3E FF        		ld	a,0FFh
+471   86FF C9           		ret
+472   8700              _finded
+473   8700 79           		ld	a,c		; restore
+474   8701 90           		sub	b		; index znalezionego objektu ( od 0 )
+475   8702 C9           		ret
+476   8703              ;------------------------------------------------------
+477   8703              ; Wbija biezace statystyki hero do stringow stat_info
+478   8703              ; USED: wszystko
+479   8703              ;------------------------------------------------------
+480   8703              update_info_strings:
+481   8703 21 0D 93     		ld	hl,stat_info + 4
+482   8706 11 F2 92     		ld	de,hero.stat.hp
+483   8709 06 03        		ld	b,3
+484   870B              _nxt_stat
+485   870B C5           		push	bc
+486   870C 1A           		ld	a,(de)
+487   870D CD 71 92     		call	h2asci
+488   8710 71           		ld	(hl),c
+489   8711 23           		inc	hl
+490   8712 70           		ld	(hl),b
+491   8713 13           		inc	de
+492   8714 06 00        		ld	b,0
+493   8716 0E 06        		ld	c,6
+494   8718 09           		add	hl,bc
+495   8719 C1           		pop		bc
+496   871A 10 EF        		djnz	_nxt_stat
+497   871C              		; etykieta broni i zbroi
+498   871C 06 02        		ld	b,LABELS_NUMBER
+499   871E 3A F5 92     		ld	a,(hero.bag.weapon)
+500   8721 EB           		ex	de,hl				; w DE miejsce w stringu
+501   8722 21 2E 93     		ld	hl,weapon_names
+502   8725
+503   8725              _modify_string
+504   8725
+505   8725 C5           		push	bc
+506   8726
+507   8726 47           		ld	b,a
+508   8727 87           		add	a,a
+509   8728 80           		add	a,b							; x3
+510   8729 06 00        		ld	b,0
+511   872B 4F           		ld	c,a
+512   872C 09           		add	hl,bc
+513   872D 01 03 00     		ld	bc,3						; ( x3 litery )
+514   8730 ED B0        		ldir
+515   8732
+516   8732 3A F6 92     		ld	a,(hero.bag.armour)
+517   8735 21 05 00     		ld	hl,5
+518   8738 19           		add	hl,de
+519   8739 EB           		ex	de,hl
+520   873A 21 61 93     		ld	hl,armour_names
+521   873D
+522   873D C1           		pop		bc
+523   873E
+524   873E 10 E5        		djnz	_modify_string
+525   8740
+526   8740 C9           		ret
+527   8741              ;------------------------------------------------------
+528   8741              ; Drukuje statystyki
+529   8741              ;------------------------------------------------------
+530   8741              print_info:
+531   8741 01 09 93     		ld	bc,stat_info
+532   8744 11 37 40     		ld	de,STS_ADR
+533   8747 26 03        		ld	h,3				;  ilosc etykiet statystyk
+534   8749 CD 54 87     		call	_p_info
+535   874C
+536   874C 01 1E 93     		ld	bc,__1st
+537   874F 11 37 49     		ld	de,ITM_ADR
+538   8752 26 02        		ld	h,2				;  ilosc etykiet przedmiotow
+539   8754              _p_info
+540   8754 E5           		push	hl
+541   8755 D5           		push	de
+542   8756
+543   8756 CD EF 87     		call	pstring_global
+544   8759
+545   8759 03           		inc	bc
+546   875A D1           		pop		de
+547   875B 21 20 00     		ld	hl,32
+548   875E 19           		add	hl,de
+549   875F EB           		ex	de,hl
+550   8760 E1           		pop		hl
+551   8761 25           		dec	h
+552   8762 20 F0        		jr	nz,_p_info
+553   8764 C9           		ret
+554   8765
+555   8765              ;---------------------------------------------
+556   8765              ; Teleport
+557   8765              ;---------------------------------------------
+558   8765              teleport:
+559   8765              		PRINT_STR	MSG_LINE1 + 4, msg_teleport
+559   8765 11 24 48    >		ld	de,MSG_LINE1 + 4
+559   8768 01 89 94    >		ld	bc,msg_teleport
+559   876B CD EA 87    >		call	pstring
+560   876E              ;------------------------
+561   876E              ; Wyjscie
+562   876E              ;------------------------
+563   876E              _halt:
+564   876E FB           		ei
+565   876F C9           		ret
+566   8770
+567   8770              ;--------------------------
+568   8770
+569   8770              		include screen.asm
+# file opened: screen.asm
+  1+  8770              ; ==================================================================
+  2+  8770              ; === Przyjmuje y,x ekranu, a zwraca adres w pamieci ekranu ========
+  3+  8770              ; IN:
+  4+  8770              ;	BC - Y,X
+  5+  8770              ; OUT:
+  6+  8770              ;	DE - adres pozycji na ekranie
+  7+  8770              ; USED:	A
+  8+  8770              ; ==================================================================
+  9+  8770              gotoyx:
+ 10+  8770 11 00 40     		ld	de,SCREEN
+ 11+  8773 78           		ld	a,b
+ 12+  8774 E6 07        		and	%00000111		; bity 0-2 Y-ka
+ 13+  8776 0F           		rrca				; * 32
+ 14+  8777 0F           		rrca				; ( gorna tercja ekranu )
+ 15+  8778 0F           		rrca
+ 16+  8779 B3           		or	e
+ 17+  877A 5F           		ld	e,a
+ 18+  877B 78           		ld	a,b
+ 19+  877C E6 18        		and	%00011000		; bity 3-4 Y-ka
+ 20+  877E B2           		or	d			; * 2K ( 8 * 8 * 32 )
+ 21+  877F 57           		ld	d,a			; ( pozostale dwie tercje )
+ 22+  8780
+ 23+  8780 79           		ld	a,c
+ 24+  8781 B3           		or	e			; przesuniecie X do adresu
+ 25+  8782 5F           		ld	e,a
+ 26+  8783 C9           		ret
+ 27+  8784
+ 28+  8784              ; ===================================================
+ 29+  8784              ; =======       Drukuje znak na ekranie      ========
+ 30+  8784              ; IN: 	DE - adres gdzie ma pojawic sie znak
+ 31+  8784              ;	A - ASCII char do wyswietlenia
+ 32+  8784              ; USED:	A, DE, HL
+ 33+  8784              ; ===================================================
+ 34+  8784              pchar:
+ 35+  8784 D6 20        		sub	20h			; start od spacji, a
+ 36+  8786 87           		add	a,a			; x2
+ 37+  8787 26 00        		ld	h,0
+ 38+  8789 6F           		ld	l,a
+ 39+  878A 29           		add	hl,hl
+ 40+  878B 29           		add	hl,hl			; x8
+ 41+  878C 3E 3D        		ld	a,FONTS_MSB
+ 42+  878E 84           		add	a,h
+ 43+  878F 67           		ld	h,a
+ 44+  8790              	REPT	8
+ 45+  8790 7E          >		ld	a,(hl)
+ 46+  8791 12          >		ld	(de),a
+ 47+  8792 23          >		inc	hl
+ 48+  8793 14          >		inc	d
+ 45+  8794 7E          >		ld	a,(hl)
+ 46+  8795 12          >		ld	(de),a
+ 47+  8796 23          >		inc	hl
+ 48+  8797 14          >		inc	d
+ 45+  8798 7E          >		ld	a,(hl)
+ 46+  8799 12          >		ld	(de),a
+ 47+  879A 23          >		inc	hl
+ 48+  879B 14          >		inc	d
+ 45+  879C 7E          >		ld	a,(hl)
+ 46+  879D 12          >		ld	(de),a
+ 47+  879E 23          >		inc	hl
+ 48+  879F 14          >		inc	d
+ 45+  87A0 7E          >		ld	a,(hl)
+ 46+  87A1 12          >		ld	(de),a
+ 47+  87A2 23          >		inc	hl
+ 48+  87A3 14          >		inc	d
+ 45+  87A4 7E          >		ld	a,(hl)
+ 46+  87A5 12          >		ld	(de),a
+ 47+  87A6 23          >		inc	hl
+ 48+  87A7 14          >		inc	d
+ 45+  87A8 7E          >		ld	a,(hl)
+ 46+  87A9 12          >		ld	(de),a
+ 47+  87AA 23          >		inc	hl
+ 48+  87AB 14          >		inc	d
+ 45+  87AC 7E          >		ld	a,(hl)
+ 46+  87AD 12          >		ld	(de),a
+ 47+  87AE 23          >		inc	hl
+ 48+  87AF 14          >		inc	d
+ 49+  87B0              	ENDR
+ 50+  87B0 C9           		ret
+ 51+  87B1
+ 52+  87B1              ; ==================================================================
+ 53+  87B1              ; IN:	DE - adres gdzie ma pojawic sie tile
+ 54+  87B1              ;		BC - adres pierwszego tile do wyswietlenia
+ 55+  87B1              ; ==================================================================
+ 56+  87B1              print_tile_line:
+ 57+  87B1 0A           		ld	a,(bc)
+ 58+  87B2 FE FF        		cp	TILE_EOL
+ 59+  87B4 CA E9 87     		jp	z,ptile_out
+ 60+  87B7
+ 61+  87B7              	;	print_attribute_2buffer
+ 62+  87B7
+ 63+  87B7              		MUL_Ax8_TO_HL
+ 63+  87B7 26 00       >		ld	h,0
+ 63+  87B9 6F          >		ld	l,a
+ 63+  87BA 29          >		add	hl,hl
+ 63+  87BB 29          >		add	hl,hl
+ 63+  87BC 29          >		add	hl,hl
+ 64+  87BD              ;	push	hl
+ 65+  87BD              ;		PRINT_ATR
+ 66+  87BD              ;	pop		hl
+ 67+  87BD 3E 80        		ld	a,TILES_MSB
+ 68+  87BF 84           		add	a,h
+ 69+  87C0 67           		ld	h,a
+ 70+  87C1              	REPT	8
+ 71+  87C1 7E          >		ld	a,(hl)
+ 72+  87C2 12          >		ld	(de),a
+ 73+  87C3 23          >		inc	hl
+ 74+  87C4 14          >		inc	d
+ 71+  87C5 7E          >		ld	a,(hl)
+ 72+  87C6 12          >		ld	(de),a
+ 73+  87C7 23          >		inc	hl
+ 74+  87C8 14          >		inc	d
+ 71+  87C9 7E          >		ld	a,(hl)
+ 72+  87CA 12          >		ld	(de),a
+ 73+  87CB 23          >		inc	hl
+ 74+  87CC 14          >		inc	d
+ 71+  87CD 7E          >		ld	a,(hl)
+ 72+  87CE 12          >		ld	(de),a
+ 73+  87CF 23          >		inc	hl
+ 74+  87D0 14          >		inc	d
+ 71+  87D1 7E          >		ld	a,(hl)
+ 72+  87D2 12          >		ld	(de),a
+ 73+  87D3 23          >		inc	hl
+ 74+  87D4 14          >		inc	d
+ 71+  87D5 7E          >		ld	a,(hl)
+ 72+  87D6 12          >		ld	(de),a
+ 73+  87D7 23          >		inc	hl
+ 74+  87D8 14          >		inc	d
+ 71+  87D9 7E          >		ld	a,(hl)
+ 72+  87DA 12          >		ld	(de),a
+ 73+  87DB 23          >		inc	hl
+ 74+  87DC 14          >		inc	d
+ 71+  87DD 7E          >		ld	a,(hl)
+ 72+  87DE 12          >		ld	(de),a
+ 73+  87DF 23          >		inc	hl
+ 74+  87E0 14          >		inc	d
+ 75+  87E1              	ENDR
+ 76+  87E1 7A           		ld	a,d
+ 77+  87E2 D6 08        		sub	8
+ 78+  87E4 57           		ld	d,a
+ 79+  87E5 13           		inc	de
+ 80+  87E6 03           		inc	bc
+ 81+  87E7 18 C8        		jr	print_tile_line
+ 82+  87E9              ptile_out:
+ 83+  87E9 C9           		ret
+ 84+  87EA
+ 85+  87EA              ; ==================================================================
+ 86+  87EA              ; IN:	DE - adres gdzie ma pojawic sie string
+ 87+  87EA              ;		BC - adres stringa do wyswietlenia
+ 88+  87EA              ; ==================================================================
+ 89+  87EA              pstring:
+ 90+  87EA 3E 01        		ld	a,1
+ 91+  87EC 32 D5 93     		ld	(message_flag),a		; trzeba bedzie wyczyscic powiadomienia
+ 92+  87EF              pstring_global:
+ 93+  87EF 0A           		ld	a,(bc)
+ 94+  87F0 FE 24        		cp	STRING_DELIM
+ 95+  87F2 CA FE 87     		jp	z,pstring_out
+ 96+  87F5 D5           		push	de
+ 97+  87F6 CD 84 87     		call	pchar
+ 98+  87F9 D1           		pop	de
+ 99+  87FA 13           		inc	de
+100+  87FB 03           		inc	bc
+101+  87FC 18 EC        		jr	pstring
+102+  87FE              pstring_out:
+103+  87FE C9           		ret
+104+  87FF
+105+  87FF              ; ==================================================================
+106+  87FF              ;	Zeruje 9-cio kolumnowe linie do wyczyszczenia
+107+  87FF              ;	IN:	HL	-  adres pierwszej lini do czyszczenia
+108+  87FF              ;	B	_	liczba lini do wyczyszczenia
+109+  87FF              ; ==================================================================
+110+  87FF              clear_txtlines:
+111+  87FF 54           		ld	d,h
+112+  8800 5D           		ld	e,l			; SAVE HL
+113+  8801              _txtline_down:
+114+  8801 AF           		xor	a
+115+  8802 0E 08        		ld	c,8
+116+  8804              _line_down:
+117+  8804              	REPT	FOV_WIDTH
+118+  8804 77          >		ld	(hl),a
+119+  8805 2C          >		inc	l
+118+  8806 77          >		ld	(hl),a
+119+  8807 2C          >		inc	l
+118+  8808 77          >		ld	(hl),a
+119+  8809 2C          >		inc	l
+118+  880A 77          >		ld	(hl),a
+119+  880B 2C          >		inc	l
+118+  880C 77          >		ld	(hl),a
+119+  880D 2C          >		inc	l
+118+  880E 77          >		ld	(hl),a
+119+  880F 2C          >		inc	l
+118+  8810 77          >		ld	(hl),a
+119+  8811 2C          >		inc	l
+118+  8812 77          >		ld	(hl),a
+119+  8813 2C          >		inc	l
+118+  8814 77          >		ld	(hl),a
+119+  8815 2C          >		inc	l
+120+  8816              	ENDR
+121+  8816 6B           		ld	l,e			; RESTORE L
+122+  8817 24           		inc	h
+123+  8818 0D           		dec	c
+124+  8819 C2 04 88     	jp	nz,_line_down
+125+  881C 62           		ld	h,d			; RESTORE H
+126+  881D 7D           		ld	a,l
+127+  881E C6 20        		add	a,SCREEN_WIDTH
+128+  8820 6F           		ld	l,a
+129+  8821 5D           		ld	e,l
+130+  8822 30 05        		jr	nc,_same_third
+131+  8824 7C           		ld	a,h
+132+  8825 C6 08        		add	a,$08
+133+  8827 67           		ld	h,a
+134+  8828 54           		ld	d,h
+135+  8829              _same_third:
+136+  8829 05           		dec	b
+137+  882A C2 01 88     		jp	nz,_txtline_down
+138+  882D C9           		ret
+139+  882E
+140+  882E              ; ==================================================================
+141+  882E              ;	Ustawia miganie char'a
+142+  882E              ;	IN:	DE - adres chara w pamieci ekranu
+143+  882E              ; ==================================================================
+144+  882E              flash_portal:
+145+  882E 7A           		ld	a,d					; restore DE
+146+  882F D6 08        		sub	8					;
+147+  8831 57           		ld	d,a					; ----------
+148+  8832
+149+  8832 CD 47 88     		call	scr_to_atr
+150+  8835 EB           		ex	de,hl
+151+  8836 36 86        		ld	(hl),PORTAL_ATR
+152+  8838 22 D7 93     		ld	(flash_adr),hl
+153+  883B 3A D6 93     		ld	a,(game_flags)
+154+  883E B7 F6 80     		or	a,%10000000
+155+  8841 32 D6 93     		ld	(game_flags),a
+156+  8844 C3 21 8A     		jp	_printout
+157+  8847              ; ==================================================================
+158+  8847              ;	Zamienia adres pamieci ekranu na adres atrybutu
+159+  8847              ;	IN:	DE	- adres pamieci ekranu
+160+  8847              ;	OUT:	DE	- adres atrybutu
+161+  8847              ; ==================================================================
+162+  8847              scr_to_atr:
+163+  8847 7A           		ld	a,d
+164+  8848 FE 48        		cp	$48
+165+  884A 38 06        		jr	c,_1_third
+166+  884C 28 08        		jr	z,_2_third
+167+  884E C6 0A        		add	a,$0A
+168+  8850 18 06        		jr	_done
+169+  8852              _1_third
+170+  8852 C6 18        		add	a,$18
+171+  8854 18 02        		jr	_done
+172+  8856              _2_third
+173+  8856 C6 11        		add	a,$11
+174+  8858              _done
+175+  8858 57           		ld	d,a
+176+  8859 C9           		ret
+177+  885A
+178+  885A              ; ==================================================================
+179+  885A              ;	Ustawia atrybuty dla 'znaku' na ekranie
+180+  885A              ;	IN:	A - atrybut
+181+  885A              ;		DE - YX
+182+  885A              ; ==================================================================
+183+  885A              ;set_atr:
+184+  885A              ;	push	af
+185+  885A              ;		ld	a,d
+186+  885A              ;		add	a,a
+187+  885A              ;		add	a,a
+188+  885A              ;		add	a,a
+189+  885A              ;		ld	l,a
+190+  885A              ;		ld	h,0
+191+  885A              ;		add	hl,hl
+192+  885A              ;		add hl,hl
+193+  885A              ;		ld	a,e
+194+  885A              ;		add	a,l
+195+  885A              ;		ld	l,a
+196+  885A              ;		ld	a,ATR_MSB
+197+  885A              ;		add	a,h
+198+  885A              ;		ld	h,a
+199+  885A              ;	pop		af
+200+  885A              ;		ld	(hl),a
+201+  885A              ;		ret
+202+  885A
+203+  885A              ; ==================================================================
+204+  885A              ;	Ustawia atrybuty dla lini na ekranie
+205+  885A              ;	IN:	A - atrybut
+206+  885A              ;		C - liczba kolumn
+207+  885A              ;		DE - YX
+208+  885A              ; ==================================================================
+209+  885A              set_atr_line
+210+  885A
+211+  885A F5           		push	af
+212+  885B
+213+  885B 7A           		ld	a,d
+214+  885C 87           		add	a,a
+215+  885D 87           		add	a,a
+216+  885E 87           		add	a,a
+217+  885F 6F           		ld	l,a
+218+  8860 26 00        		ld	h,0
+219+  8862 29           		add	hl,hl
+220+  8863 29           		add hl,hl
+221+  8864 7B           		ld	a,e
+222+  8865 85           		add	a,l
+223+  8866 6F           		ld	l,a
+224+  8867 3E 58        		ld	a,ATR_MSB
+225+  8869 84           		add	a,h
+226+  886A 67           		ld	h,a
+227+  886B              ;		ld	a,b
+228+  886B 41           		ld	b,c
+229+  886C
+230+  886C F1           		pop		af
+231+  886D
+232+  886D              _nxt_col:
+233+  886D 77           		ld	(hl),a
+234+  886E 2C           		inc	l
+235+  886F 10 FC        	djnz	_nxt_col
+236+  8871 C9           		ret
+237+  8872
+238+  8872              ; ==================================================================
+239+  8872              ;	Ustawia atrybuty dla bloku ( czworokata ) na ekranie
+240+  8872              ;	IN:	A - atrybut
+241+  8872              ;		B - liczba lini
+242+  8872              ;		C - liczba kolumn
+243+  8872              ;		DE - YX
+244+  8872              ; ==================================================================
+245+  8872              set_atr_block:
+246+  8872
+247+  8872 C5           		push	bc
+248+  8873
+249+  8873 CD 5A 88     		call set_atr_line
+250+  8876 14           		inc	d
+251+  8877
+252+  8877 C1           		pop		bc
+253+  8878
+254+  8878 10 F8        	djnz	set_atr_block
+255+  887A C9           		ret
+256+  887B
+257+  887B              ; ==================================================================
+258+  887B              ; Przyjmuje y,x ekranu, a zwraca adres w pamieci atrybutow ekranu
+259+  887B              ; IN:
+260+  887B              ;	BC - Y,X
+261+  887B              ; OUT:
+262+  887B              ;	HL' - adres w pamieci atrybutow
+263+  887B              ; USED: A', BC'
+264+  887B              ; ==================================================================
+265+  887B
+266+  887B              ;atryx:
+267+  887B              ;		push	bc
+268+  887B              ;		exx
+269+  887B              ;		ex	af,af'
+270+  887B              ;		pop	bc
+271+  887B              ;
+272+  887B              ;		ld	hl,0
+273+  887B              ;		ld	a,b
+274+  887B              ;		add	a,a
+275+  887B              ;		add	a,a
+276+  887B              ;		add	a,a
+277+  887B              ;		ld	l,a
+278+  887B              ;		add	hl,hl
+279+  887B              ;		add	hl,hl
+280+  887B              ;		ld	b,0
+281+  887B              ;		add	hl,bc
+282+  887B              ;		ld	bc,SCREEN_ATR
+283+  887B              ;	add	hl,bc
+284+  887B              ;		ex	af,af'
+285+  887B              ;		exx
+286+  887B              ;		ret
+287+  887B
+288+  887B              ; ==================================================================
+289+  887B              ; IN: 	HL' - adres gdzie ma pojawic sie bajt atrybutow
+290+  887B              ;	A - bajt atrybutow do skopiowania
+291+  887B              ; USED:	A'
+292+  887B              ; ==================================================================
+293+  887B              ;patr:		push	af
+294+  887B              ;		exx
+295+  887B              ;		pop	af
+296+  887B              ;		ld	(hl),a
+297+  887B              ;		exx
+298+  887B              ;		ret
+299+  887B
+300+  887B              ; ---------------------------------------------------------------
+301+  887B              ; Jesli bylo powiadomienie w poprzednim ruchu - trzeba wyczyscic
+302+  887B              ; ---------------------------------------------------------------
+303+  887B              message_area_clear:
+304+  887B 3A D5 93     		ld	a,(message_flag)
+305+  887E B7           		or	a
+306+  887F C8           		ret	z
+307+  8880
+308+  8880 21 20 48     		ld	hl,MSG_ADR				; blok lewy
+309+  8883 06 02        		ld	b,2
+310+  8885 CD FF 87     		call	clear_txtlines
+311+  8888
+312+  8888 21 28 48     		ld	hl,MSG_ADR + 8			; prawy
+313+  888B 06 02        		ld	b,2
+314+  888D CD FF 87     		call	clear_txtlines
+315+  8890
+316+  8890 AF           		xor	a
+317+  8891 32 D5 93     		ld	(message_flag),a
+318+  8894 C9           		ret
+319+  8895
+320+  8895              ; ==========================================
+321+  8895              ; Druguje ramke okna
+322+  8895              ; IN:	BC - Y, X lewego gornego rogu ramki
+323+  8895              ; ==========================================
+324+  8895              print_frames:
+325+  8895 21 B2 88     		ld	hl,fov_frame_indexes			; iterator
+326+  8898 06 22        			ld	b,FFH * 2 + F3H * 2	; licznik
+327+  889A              _line_dwn:
+328+  889A
+329+  889A C5           		push	bc
+330+  889B
+331+  889B 46           		ld	b,(hl)
+332+  889C 23           		inc	hl
+333+  889D 4E           		ld	c,(hl)
+334+  889E CD 70 87     		call	gotoyx
+335+  88A1              		; adres w DE
+336+  88A1 23           		inc	hl
+337+  88A2 44           		ld	b,h
+338+  88A3 4D           		ld	c,l
+339+  88A4
+340+  88A4 08           		ex	af,af'
+341+  88A5 3E 04        		ld	a,BLACK_BGD OR GREEN
+342+  88A7 08           		ex	af,af'
+343+  88A8
+344+  88A8 CD B1 87     		call	print_tile_line
+345+  88AB              		; BC - iterator na $FF (eol)
+346+  88AB 60           		ld	h,b
+347+  88AC 69           		ld	l,c
+348+  88AD 23           		inc	hl
+349+  88AE
+350+  88AE C1           		pop		bc
+351+  88AF
+352+  88AF 10 E9        		djnz	_line_dwn
+353+  88B1 C9           		ret
+354+  88B2
+355+  88B2              ; ========================================================================
+356+  88B2              fov_frame_indexes:
+357+  88B2 0C 03 4C 4D  	db	FFY, FFX, 76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
+357+  88B6 4E 4F 50 4C
+357+  88BA 4D 4E 4F 50
+357+  88BE 4C FF
+358+  88C0 0D 03 51 FF  	db	FFY+1, FFX, 81, $FF, FFY+1, FFX+FFW, 81, $FF
+358+  88C4 0D 0D 51 FF
+359+  88C8 0E 03 52 FF  	db	FFY+2, FFX, 82, $FF, FFY+2, FFX+FFW, 82, $FF
+359+  88CC 0E 0D 52 FF
+360+  88D0 0F 03 53 FF  	db	FFY+3, FFX, 83, $FF, FFY+3, FFX+FFW, 83, $FF
+360+  88D4 0F 0D 53 FF
+361+  88D8 10 03 54 FF  	db	FFY+4, FFX, 84, $FF, FFY+4, FFX+FFW, 84, $FF
+361+  88DC 10 0D 54 FF
+362+  88E0 11 03 4C FF  	db	FFY+5, FFX, 76, $FF, FFY+5, FFX+FFW, 76, $FF
+362+  88E4 11 0D 4C FF
+363+  88E8 12 03 51 FF  	db	FFY+6, FFX, 81, $FF, FFY+6, FFX+FFW, 81, $FF
+363+  88EC 12 0D 51 FF
+364+  88F0 13 03 52 FF  	db	FFY+7, FFX, 82, $FF, FFY+7, FFX+FFW, 82, $FF
+364+  88F4 13 0D 52 FF
+365+  88F8 14 03 53 FF  	db	FFY+8, FFX, 83, $FF, FFY+8, FFX+FFW, 83, $FF
+365+  88FC 14 0D 53 FF
+366+  8900 15 03 54 FF  	db	FFY+9, FFX, 84, $FF, FFY+9, FFX+FFW, 84, $FF
+366+  8904 15 0D 54 FF
+367+  8908 16 03 4C 4D  	db	FFY+10, FFX, 76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
+367+  890C 4E 4F 50 4C
+367+  8910 4D 4E 4F 50
+367+  8914 4C FF
+368+  8916
+369+  8916 00 03 4C 4D  	db	F3Y, F3X, 76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
+369+  891A 4E 4F 50 4C
+369+  891E 4D 4E 4F 50
+369+  8922 4C FF
+370+  8924 01 03 51 FF  	db	F3Y+1, F3X, 81, $FF, F3Y+1, F3X+F3W, 81, $FF
+370+  8928 01 0D 51 FF
+371+  892C 02 03 52 FF  	db	F3Y+2, F3X, 82, $FF, F3Y+2, F3X+F3W, 82, $FF
+371+  8930 02 0D 52 FF
+372+  8934 03 03 53 FF  	db	F3Y+3, F3X, 83, $FF, F3Y+3, F3X+F3W, 83, $FF
+372+  8938 03 0D 53 FF
+373+  893C 04 03 51 FF  	db	F3Y+4, F3X, 81, $FF, F3Y+4, F3X+F3W, 81, $FF
+373+  8940 04 0D 51 FF
+374+  8944 05 03 52 FF  	db	F3Y+5, F3X, 82, $FF, F3Y+5, F3X+F3W, 82, $FF
+374+  8948 05 0D 52 FF
+375+  894C 06 03 53 FF  	db	F3Y+6, F3X, 83, $FF, F3Y+6, F3X+F3W, 83, $FF
+375+  8950 06 0D 53 FF
+376+  8954 07 03 4C 4D  	db	F3Y+7, F3X, 76, 77, 78, 79, 80, 76, 77, 78, 79, 80, 76, $FF
+376+  8958 4E 4F 50 4C
+376+  895C 4D 4E 4F 50
+376+  8960 4C FF
+377+  8962
+# file closed: screen.asm
+570   8962              		include	fov.asm
+# file opened: fov.asm
+  1+  8962              ;=============
+  2+  8962              field_of_view:
+  3+  8962              ;=============
+  4+  8962              	; fov_coords - offsety tiles na ekranie ( zawsze stale )
+  5+  8962              	; fov_offsets - offsety tiles na mapie ( zaleza od szerokosci mapy )
+  6+  8962
+  7+  8962              	; Ustawienie wskaznika fov_coords w zaleznosci kierunku patrzenia.
+  8+  8962              	; wariant z 4 bajtowa tabelka fov_shift ( staly krok o 36B )
+  9+  8962 21 CA 8C     		ld	hl,fov_shift
+ 10+  8965 3A EF 92     		ld	a,(hero.direction)
+ 11+  8968 16 00        		ld	d,0
+ 12+  896A 5F           		ld	e,a
+ 13+  896B 19           		add	hl,de
+ 14+  896C 5E           		ld	e,(hl)			; przesuniecie do dodania
+ 15+  896D 21 3A 8C     		ld	hl,fov_coords
+ 16+  8970 19           		add	hl,de
+ 17+  8971 22 CE 8C     		ld	(coords_pointer),hl	; zapisany
+ 18+  8974
+ 19+  8974
+ 20+  8974              	; Ustawienie wkaznika dla offsetow tiles
+ 21+  8974              	; koordynaty oraz offsety sa 2 bajtowe, wiec offset w DE jest ten sam
+ 22+  8974 21 AA 8B     		ld	hl,fov_offsets
+ 23+  8977 19           		add	hl,de			; wskaznik na offset tile
+ 24+  8978 22 D0 8C     		ld	(offset_pointer),hl	; wzgledem Hero
+ 25+  897B
+ 26+  897B              	; Ustawienie wskaznika dla fov_list
+ 27+  897B              	; Wszystkie obiekty w polu widzenia beda dodany do tej listy
+ 28+  897B              	; Te poza map beda wyzerowane
+ 29+  897B              	; 3 Bajty dla obiektu: y, x ( dla Terminala ), ASCII char obiektu
+ 30+  897B DD 21 3B 8B  		ld	ix,fov_list
+ 31+  897F
+ 32+  897F              	; Dodanie offsetow koordynatow Tiles do koordynatow Hero
+ 33+  897F 06 12        		ld	b,18			; 18 przebiegow petli
+ 34+  8981              setdataloop:
+ 35+  8981 C5           		push	bc			; SAVE licznik
+ 36+  8982 DD 36 00 00  		ld	(ix),00h
+ 37+  8986 DD 36 01 00  		ld	(ix+1),00h
+ 38+  898A DD 36 02 00  		ld	(ix+2),00h
+ 39+  898E 2A CE 8C     		ld	hl,(coords_pointer)
+ 40+  8991              		; Y
+ 41+  8991 5E           		ld	e,(hl)			; offset Y tile
+ 42+  8992 3E 11        		ld	a,HERO_Y
+ 43+  8994 83           		add	a,e
+ 44+  8995 DD 77 00     		ld	(ix),a			; do Y tile i zapis do fov_list
+ 45+  8998 23           		inc	hl
+ 46+  8999              		; X
+ 47+  8999 56           		ld	d,(hl)			; offset X tile
+ 48+  899A 3E 08        		ld	a,HERO_X
+ 49+  899C 82           		add	a,d
+ 50+  899D DD 77 01     		ld	(ix+1),a		; do X tile i zapis do fov_list
+ 51+  89A0
+ 52+  89A0              	; ASCII char
+ 53+  89A0 2A D0 8C     		ld	hl,(offset_pointer)
+ 54+  89A3 5E           		ld	e,(hl)
+ 55+  89A4 23           		inc	hl
+ 56+  89A5 56           		ld	d,(hl)
+ 57+  89A6 2A F0 92     		ld	hl,(hero.offset)
+ 58+  89A9 19           		add	hl,de			; dodanie przesuniecia Hero
+ 59+  89AA EB           		ex	de,hl			; save sumy przesuniec
+ 60+  89AB 21 91 94     		ld	hl,MAP
+ 61+  89AE 19           		add	hl,de			; i odczytanie z mapy char
+ 62+  89AF 7E           		ld	a,(hl)			; Tile i zapisanie tego
+ 63+  89B0 DD 77 02     		ld	(ix+2),a		; char (Tile) na liscie fov
+ 64+  89B3
+ 65+  89B3              	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
+ 66+  89B3              	; i wskaznika listy FOV
+ 67+  89B3 2A CE 8C     		ld	hl,(coords_pointer)
+ 68+  89B6 23           		inc	hl
+ 69+  89B7 23           		inc	hl
+ 70+  89B8 22 CE 8C     		ld	(coords_pointer),hl
+ 71+  89BB 2A D0 8C     		ld	hl,(offset_pointer)
+ 72+  89BE 23           		inc	hl
+ 73+  89BF 23           		inc	hl
+ 74+  89C0 22 D0 8C     		ld	(offset_pointer),hl
+ 75+  89C3 DD 23        		inc	ix
+ 76+  89C5 DD 23        		inc	ix
+ 77+  89C7 DD 23        		inc	ix
+ 78+  89C9 C1           		pop	bc				; RESTORE licznik
+ 79+  89CA 10 B5        		djnz	setdataloop
+ 80+  89CC
+ 81+  89CC              	; ----------------------------------------------------
+ 82+  89CC              	; - Petla wyswietlajaca FOV i zapisujaca do prev_fov -
+ 83+  89CC              	; ----------------------------------------------------
+ 84+  89CC 06 12        		ld	b,18			; ilosc mozliwych pol widzenia
+ 85+  89CE              printloop:
+ 86+  89CE C5           		push	bc
+ 87+  89CF
+ 88+  89CF 21 01 8B     		ld	hl,count_order		; podmiana licznika na liczacy
+ 89+  89D2 58           		ld	e,b			; z dwoch stron fov do srodka
+ 90+  89D3 16 00        		ld	d,0
+ 91+  89D5 19           		add	hl,de			; w hl adres nowego licznika
+ 92+  89D6
+ 93+  89D6 7E           		ld	a,(hl)			; Tylko dla Tile od 18 do 6
+ 94+  89D7 32 00 8B     		ld	(main_counter),a
+ 95+  89DA FE 06        		cp	6			; spradza czy Tile widoczny
+ 96+  89DC D2 25 8A     		jp	nc,is_visible		; Reszta zawsze widoczna.
+ 97+  89DF              _vsbl:
+ 98+  89DF              		; Ustawienie kursora
+ 99+  89DF 21 71 8B     		ld	hl,fov_list_end
+100+  89E2 3A 00 8B     		ld	a,(main_counter)
+101+  89E5 47           		ld	b,a
+102+  89E6 87           		add	a,a
+103+  89E7 80           		add	a,b			; licznik x 3
+104+  89E8 5F           		ld	e,a
+105+  89E9 A7           		and	a			; carry  0
+106+  89EA ED 52        		sbc	hl,de			; Adres ( Y, X, char )
+107+  89EC 46           		ld	b,(hl)		; Y
+108+  89ED 23           		inc	hl
+109+  89EE 4E           		ld	c,(hl)		; X
+110+  89EF 23           		inc	hl
+111+  89F0
+112+  89F0              		; Tile na ekran
+113+  89F0 CD 70 87     		call	gotoyx
+114+  89F3
+115+  89F3 7E           		ld	a,(hl)			; Tile char
+116+  89F4 47           		ld	b,a					; Save Tile char
+117+  89F5 CD 84 87     		call	pchar
+118+  89F8
+119+  89F8 78           		ld	a,b					; Restore Tile.char
+120+  89F9
+121+  89F9              		; ustawia miganie tam gdzie ma byc
+122+  89F9 FE 50        		cp	PORTAL_CHAR
+123+  89FB CA 2E 88     		jp	z,flash_portal
+124+  89FE
+125+  89FE              _print3d
+126+  89FE FE 23        		cp	WALL_CHAR
+127+  8A00 CA D3 8C     		jp	z,printwall_3d		; Sprite na ekran
+128+  8A03
+129+  8A03 FE 2B        		cp	C_DOOR_CHAR
+130+  8A05 CA D8 8C     		jp	z,print_c_door_3d
+131+  8A08
+132+  8A08 FE 2F        		cp	O_DOOR_CHAR
+133+  8A0A CA DD 8C     		jp	z,print_o_door_3d
+134+  8A0D
+135+  8A0D FE 7E        		cp	KEY_CHAR
+136+  8A0F CA E2 8C     		jp	z,print_key_3d
+137+  8A12
+138+  8A12 FE 28        		cp	WEAPON_CHAR
+139+  8A14 CA E7 8C     		jp	z,print_weapon_3d
+140+  8A17
+141+  8A17 FE 5B        		cp	ARMOUR_CHAR
+142+  8A19 CA EC 8C     		jp	z,print_armour_3d
+143+  8A1C
+144+  8A1C FE 26        		cp	FIGURE_CHAR
+145+  8A1E CA 20 8D     		jp	z,print_figure_3d
+146+  8A21              _printout:
+147+  8A21 C1           		pop	bc
+148+  8A22 10 AA        		djnz	printloop
+149+  8A24 C9           		ret
+150+  8A25
+151+  8A25              ;-----------------------------------
+152+  8A25              ; Sprawdza czy Tile jest widoczny
+153+  8A25              ; ( w A jest licznil petli funkji wywolujacej )
+154+  8A25              ;-----------------------------------
+155+  8A25              is_visible:
+156+  8A25 06 03        		ld	b,3				; 3 przebiegi petli
+157+  8A27 D6 06        		sub	6				; brak zaslon dla pierwszych 5
+158+  8A29 4F           		ld	c,a				; save i
+159+  8A2A 87           		add	a,a				; i x 2
+160+  8A2B 81           		add	a,c				; i x 3 (3 potencjalne zaslony)
+161+  8A2C 21 14 8B     		ld	hl,list_indexes
+162+  8A2F 5F           		ld	e,a				; D wyzerowane  wyzej
+163+  8A30 19           		add	hl,de			; wskaznik na index zaslony
+164+  8A31              _three:
+165+  8A31 7E           		ld	a,(hl)
+166+  8A32 B7           		or	a
+167+  8A33 CA DF 89     		jp	z,_vsbl			; jak 0 - wypad
+168+  8A36 4F           		ld	c,a				; Save index
+169+  8A37 87           		add	a,a
+170+  8A38 81           		add	a,c				; index x 3 ( y,x,char )
+171+  8A39 DD 21 3B 8B  		ld	ix,fov_list		; od tego liczymy offsety
+172+  8A3D 5F           		ld	e,a				; D wyzerowane  wyzej
+173+  8A3E DD 19        		add	ix,de
+174+  8A40 DD 7E 02     		ld	a,(ix+2)		; Tile.char do sprawdzenia!
+175+  8A43 FE 23        		cp	WALL_CHAR
+176+  8A45 CA 21 8A     		jp	z,_printout
+177+  8A48 FE 2B        		cp	'+'
+178+  8A4A CA 21 8A     		jp	z,_printout
+179+  8A4D 23           		inc	hl
+180+  8A4E 10 E1        		djnz	_three
+181+  8A50 C3 DF 89     		jp	_vsbl
+182+  8A53
+183+  8A53              ; -------------------------------------------------------
+184+  8A53              ; Oblicza i wypelnia wynikami tabele offsetow
+185+  8A53              ; potencjalnie widzialnych Tiles - fov_offsets
+186+  8A53              ; -------------------------------------------------------
+187+  8A53              calc_fov:
+188+  8A53              		; --- EAST & NORTH ---
+189+  8A53 FD 21 AE 8B  		ld	iy,fov_n + 4
+190+  8A57 DD 21 D2 8B  		ld	ix,fov_e + 4
+191+  8A5B 06 04        		ld	b,4			; glebokosc fov
+192+  8A5D 16 00        		ld	d,0
+193+  8A5F 1E 0A        		ld	e,10			; offset adresu od 5 do 2
+194+  8A61 3A E9 92     		ld	a,(map.width)
+195+  8A64 4F           		ld	c,a
+196+  8A65              _nxtrow:
+197+  8A65 80           		add	a,b
+198+  8A66 DD 77 02     		ld	(ix+2),a
+199+  8A69              ;		ld	(ix+3),0
+200+  8A69 78           		ld	a,b
+201+  8A6A 91           		sub	c
+202+  8A6B DD 77 FE     		ld	(ix-2),a
+203+  8A6E DD 36 FF FF  		ld	(ix-1),0FFh
+204+  8A72 DD 70 00     		ld	(ix),b
+205+  8A75              ;		ld	(ix+1),0
+206+  8A75
+207+  8A75 CD 5C 92     		call	mul8
+208+  8A78 7C           		ld	a,h
+209+  8A79 2F           		cpl
+210+  8A7A 67           		ld	h,a
+211+  8A7B 7D           		ld	a,l
+212+  8A7C 2F           		cpl
+213+  8A7D 6F           		ld	l,a
+214+  8A7E FD 75 FE     		ld	(iy-2),l
+215+  8A81 FD 74 FF     		ld	(iy-1),h
+216+  8A84 23           		inc	hl
+217+  8A85
+218+  8A85 FD 75 00     		ld	(iy),l
+219+  8A88 FD 74 01     		ld	(iy+1),h
+220+  8A8B 23           		inc	hl
+221+  8A8C FD 75 02     		ld	(iy+2),l
+222+  8A8F FD 74 03     		ld	(iy+3),h
+223+  8A92
+224+  8A92 78           		ld	a,b
+225+  8A93 FE 03        		cp	3
+226+  8A95 38 2C        		jr	c,_ommit1
+227+  8A97 DD 7E 02     		ld	a,(ix+2)
+228+  8A9A 81           		add	a,c
+229+  8A9B DD 77 04     		ld	(ix+4),a
+230+  8A9E              ;		ld	(ix+5),0
+231+  8A9E DD 7E FE     		ld	a,(ix-2)
+232+  8AA1 91           		sub	c
+233+  8AA2 DD 77 FC     		ld	(ix-4),a
+234+  8AA5 DD 36 FD FF  		ld	(ix-3),0FFh
+235+  8AA9
+236+  8AA9 FD 6E FE     		ld	l,(iy-2)
+237+  8AAC FD 66 FF     		ld	h,(iy-1)
+238+  8AAF 2B           		dec	hl
+239+  8AB0 FD 75 FC     		ld	(iy-4),l
+240+  8AB3 FD 74 FD     		ld	(iy-3),h
+241+  8AB6 FD 6E 02     		ld	l,(iy+2)
+242+  8AB9 FD 66 03     		ld	h,(iy+3)
+243+  8ABC 23           		inc	hl
+244+  8ABD FD 75 04     		ld	(iy+4),l
+245+  8AC0 FD 74 05     		ld	(iy+5),h
+246+  8AC3              _ommit1:
+247+  8AC3 DD 19        		add	ix,de
+248+  8AC5 FD 19        		add	iy,de
+249+  8AC7 1D           		dec	e
+250+  8AC8 1D           		dec	e
+251+  8AC9 79           		ld	a,c
+252+  8ACA 10 99        		djnz	_nxtrow
+253+  8ACC
+254+  8ACC DD 77 02     		ld	(ix+2),a
+255+  8ACF              ;		ld	(ix+3),0
+256+  8ACF ED 44        		neg
+257+  8AD1 DD 77 00     		ld	(ix),a
+258+  8AD4 DD 36 01 FF  		ld	(ix+1),0FFh
+259+  8AD8 FD 36 00 FF  		ld	(iy),-1
+260+  8ADC FD 36 01 FF  		ld	(iy+1),0FFh
+261+  8AE0 FD 36 02 01  		ld	(iy+2),1
+262+  8AE4              ;		ld	(iy+3),0
+263+  8AE4              		;--- WEST & SOUTH ---
+264+  8AE4 21 AA 8B     		ld	hl,fov_n
+265+  8AE7 11 F2 8B     		ld	de,fov_s
+266+  8AEA 06 24        		ld	b,36
+267+  8AEC C5           _nxt1:	push	bc
+268+  8AED 7E           		ld	a,(hl)
+269+  8AEE 2F           		cpl
+270+  8AEF 4F           		ld	c,a
+271+  8AF0 23           		inc	hl
+272+  8AF1 7E           		ld	a,(hl)
+273+  8AF2 2F           		cpl
+274+  8AF3 47           		ld	b,a
+275+  8AF4 03           		inc	bc
+276+  8AF5 79           		ld	a,c
+277+  8AF6 12           		ld	(de),a
+278+  8AF7 13           		inc	de
+279+  8AF8 78           		ld	a,b
+280+  8AF9 12           		ld	(de),a
+281+  8AFA 23           		inc	hl
+282+  8AFB 13           		inc	de
+283+  8AFC C1           		pop	bc
+284+  8AFD 10 ED        		djnz	_nxt1
+285+  8AFF C9           		ret
+286+  8B00              DSEG
+287+  8B00 00           main_counter:	db	0
+288+  8B01              ;-------------------------------------------------------
+289+  8B01              ; Sprite musza byc wyswietlane od zewnatrz fov do srodka
+290+  8B01              ; Stad petla jedzie z dwoch stron do srodka. Rzeczywisty
+291+  8B01              ; Licznik ( od 18 do 1 ) jest dodawany do tego adresu
+292+  8B01              ; i zdereferowany.
+293+  8B01              ;-----------------------------------------------------
+294+  8B01 00 01 02     count_order	db 	0,1,2
+295+  8B04 04 03 05     		db	4,3,5
+296+  8B07 07 06 08     		db	7,6,8
+297+  8B0A 0B 0A 0C 09  		db	11,10,12,9,13
+297+  8B0E 0D
+298+  8B0F 10 0F 11 0E  		db	16,15,17,14,18
+298+  8B13 12
+299+  8B14
+300+  8B14              ;-----------------------------------------------------
+301+  8B14              ; Indexy listy fov_list do sprawdzania czy jest tam
+302+  8B14              ; cos, co zaslania ten Tile's
+303+  8B14              ;-----------------------------------------------------
+304+  8B14              list_indexes   ; indeksy fov_list  | iteracje petli
+305+  8B14 0E 00 00     		db	14, 0,0		;06
+306+  8B17 0E 00 00     		db	14, 0,0		;07
+307+  8B1A 0E 00 00     		db	14, 0,0		;08
+308+  8B1D 0F 0C 00     		db	15,12,0		;09
+309+  8B20              ;		db	14,12,0		;10
+310+  8B20 0E 0B 00     		db	14,11,0		;10
+311+  8B23 0E 0B 00     		db	14,11,0		;11
+312+  8B26              ;		db	14,10,0		;12
+313+  8B26 0E 0B 00     		db	14,11,0		;12
+314+  8B29 0D 0A 00     		db	13,10,0		;13
+315+  8B2C 0F 0C 08     		db	15,12,8		;14
+316+  8B2F 0E 0C 08     		db	14,12,8		;15
+317+  8B32 0E 0B 07     		db	14,11,7		;16
+318+  8B35 0E 0A 06     		db	14,10,6		;17
+319+  8B38 0D 0A 06     		db	13,10,6		;18
+320+  8B3B
+321+  8B3B              ;--------------------------------------------------------------------------
+322+  8B3B              ; Lista obiektow wszystkich obiektow tile potencjalnie widocznych dla Hero
+323+  8B3B              ;--------------------------------------------------------------------------
+324+  8B3B 00 00 00...  fov_list	ds	54			; ( Y, X, char ) x 18
+325+  8B71              fov_list_end
+326+  8B71 00 00 00...  prev_fov_list	ds	55			; jw. + DELIM
+327+  8BA8 00 00        iterator	dw	0000h			; iterator list
+328+  8BAA
+329+  8BAA              ; -----------------------------------------------------------------
+330+  8BAA              ; Offset'y tiles wzgledem Hero - wypelniane przez funkcje calc_fov
+331+  8BAA              ; -----------------------------------------------------------------
+332+  8BAA              fov_offsets:
+333+  8BAA 00 00 00...  fov_n:	ds	36 			; North
+334+  8BCE 00 00 00...  fov_e:	ds	36			; East
+335+  8BF2 00 00 00...  fov_s:	ds	36			; South
+336+  8C16 00 00 00...  fov_w:	ds	36			; West
+337+  8C3A              ; -----------------------------------------------------
+338+  8C3A              ; Przesuniecia koordynatow tiles wzgledem Hero - stale
+339+  8C3A              ; -----------------------------------------------------
+340+  8C3A              fov_coords
+341+  8C3A FC FE FC FF  		db	-4,-2,  -4,-1,  -4,0,  -4,1,  -4,2
+341+  8C3E FC 00 FC 01
+341+  8C42 FC 02
+342+  8C44 FD FE FD FF  		db	-3,-2,  -3,-1,  -3,0,  -3,1,  -3,2
+342+  8C48 FD 00 FD 01
+342+  8C4C FD 02
+343+  8C4E FE FF FE 00  		db	        -2,-1,  -2,0,  -2,1
+343+  8C52 FE 01
+344+  8C54 FF FF FF 00  		db	        -1,-1,  -1,0,  -1,1
+344+  8C58 FF 01
+345+  8C5A 00 FF 00 01  		db	         0,-1,          0,1
+346+  8C5E
+347+  8C5E FE 04 FF 04  		db	-2,4,  -1,4,  0,4,  1,4,  2,4
+347+  8C62 00 04 01 04
+347+  8C66 02 04
+348+  8C68 FE 03 FF 03  		db	-2,3,  -1,3,  0,3,  1,3,  2,3
+348+  8C6C 00 03 01 03
+348+  8C70 02 03
+349+  8C72 FF 02 00 02  		db	       -1,2,  0,2,  1,2
+349+  8C76 01 02
+350+  8C78 FF 01 00 01  		db	       -1,1,  0,1,  1,1
+350+  8C7C 01 01
+351+  8C7E FF 00 01 00  		db	       -1,0,        1,0
+352+  8C82
+353+  8C82
+354+  8C82 04 02 04 01  		db	 4,2,  4,1,  4,0,  4,-1,  4,-2
+354+  8C86 04 00 04 FF
+354+  8C8A 04 FE
+355+  8C8C 03 02 03 01  		db	 3,2,  3,1,  3,0,  3,-1,  3,-2
+355+  8C90 03 00 03 FF
+355+  8C94 03 FE
+356+  8C96 02 01 02 00  		db	       2,1,  2,0,  2,-1
+356+  8C9A 02 FF
+357+  8C9C 01 01 01 00  		db	       1,1,  1,0,  1,-1
+357+  8CA0 01 FF
+358+  8CA2 00 01 00 FF  		db	       0,1,        0,-1
+359+  8CA6
+360+  8CA6 02 FC 01 FC  		db	 2,-4,  1,-4,  0,-4,  -1,-4,  -2,-4
+360+  8CAA 00 FC FF FC
+360+  8CAE FE FC
+361+  8CB0 02 FD 01 FD  		db	 2,-3,  1,-3,  0,-3,  -1,-3,  -2,-3
+361+  8CB4 00 FD FF FD
+361+  8CB8 FE FD
+362+  8CBA 01 FE 00 FE  		db	        1,-2,  0,-2,  -1,-2
+362+  8CBE FF FE
+363+  8CC0 01 FF 00 FF  		db	        1,-1,  0,-1,  -1,-1
+363+  8CC4 FF FF
+364+  8CC6 01 00 FF 00  		db	        1,0,        -1,0
+365+  8CCA              ; Tabela przesuniec w tabeli fov_coord. Przesuniecie zalezy od zwrotu Hero
+366+  8CCA 00 24 48 6C  fov_shift	db	0, 36, 72, 108
+367+  8CCE              ; Pola wskaznikow
+368+  8CCE 00 00        coords_pointer	dw	0000h
+369+  8CD0 00 00        offset_pointer	dw	0000h
+370+  8CD2 00           counter		db	00h
+371+  8CD3
+# file closed: fov.asm
+571   8CD3              		include 3d.asm
+# file opened: 3d.asm
+  1+  8CD3              printwall_3d:
+  2+  8CD3 21 E3 8E     		ld	hl,wall_sprites
+  3+  8CD6 18 17        		jr	_common
+  4+  8CD8              print_c_door_3d:
+  5+  8CD8 21 12 90     		ld	hl,c_door_sprites
+  6+  8CDB 18 12        		jr	_common
+  7+  8CDD              print_o_door_3d:
+  8+  8CDD 21 2D 91     		ld	hl,o_door_sprites
+  9+  8CE0 18 0D        		jr	_common
+ 10+  8CE2              print_key_3d:
+ 11+  8CE2 21 7B 91     		ld	hl,key_sprites
+ 12+  8CE5 18 08        		jr	_common
+ 13+  8CE7              print_weapon_3d:
+ 14+  8CE7 21 C9 91     		ld	hl,weapon_sprites
+ 15+  8CEA 18 03        		jr	_common
+ 16+  8CEC              print_armour_3d:
+ 17+  8CEC 21 17 92     		ld	hl,armour_sprites
+ 18+  8CEF
+ 19+  8CEF              _common
+ 20+  8CEF 3A 00 8B     		ld	a,(main_counter)
+ 21+  8CF2 3D           		dec	a
+ 22+  8CF3 87           		add	a,a
+ 23+  8CF4 16 00        		ld	d,0
+ 24+  8CF6 5F           		ld	e,a
+ 25+  8CF7 19           		add	hl,de			; adres wskaznika na Sprite
+ 26+  8CF8 5E           		ld	e,(hl)
+ 27+  8CF9 23           		inc	hl
+ 28+  8CFA 56           		ld	d,(hl)			; iterator DE na Sprite
+ 29+  8CFB
+ 30+  8CFB              _direct
+ 31+  8CFB 1A           		ld	a,(de)
+ 32+  8CFC B7           		or	a				; jesli zero to nie ma sprite'a
+ 33+  8CFD CA 21 8A     		jp	z,_printout		; w tej pozycji, a wiec wypad
+ 34+  8D00 47           		ld	b,a				; licznik lini ustawiony
+ 35+  8D01 13           		inc	de				; iterator na Y
+ 36+  8D02              _nxt
+ 37+  8D02 C5           		push	bc			; SAVE licznik
+ 38+  8D03 1A           		ld	a,(de)
+ 39+  8D04 47           		ld	b,a
+ 40+  8D05 13           		inc	de				; iterator na X
+ 41+  8D06 1A           		ld	a,(de)
+ 42+  8D07 4F           		ld	c,a				; offset Y,X w BC
+ 43+  8D08 21 04 01     		ld	hl,W3D_YX
+ 44+  8D0B 09           		add	hl,bc			; dodanie pozycji okna 3D
+ 45+  8D0C 44           		ld	b,h
+ 46+  8D0D 4D           		ld	c,l				; Y, X ekranu dla poczatku lini Tile w BC
+ 47+  8D0E
+ 48+  8D0E D5           		push	de				; SAVE iterator
+ 49+  8D0F CD 70 87     		call	gotoyx			; Kursor ustawiony
+ 50+  8D12
+ 51+  8D12 C1           		pop	bc					; RESTORE iterator
+ 52+  8D13 03           		inc	bc					; tenze na pierwszym bajcie Tile
+ 53+  8D14 CD B1 87     		call	print_tile_line
+ 54+  8D17              								; iterator BC na TILE_EOL
+ 55+  8D17 03           		inc	bc
+ 56+  8D18 50           		ld	d,b
+ 57+  8D19 59           		ld	e,c					; iterator DE na Y nastepnej lini Tile
+ 58+  8D1A
+ 59+  8D1A C1           		pop		bc				; RESTORE licznik
+ 60+  8D1B 10 E5        		djnz	_nxt
+ 61+  8D1D C3 21 8A     		jp	_printout
+ 62+  8D20
+ 63+  8D20              print_figure_3d:
+ 64+  8D20 3A 00 8B     		ld	a,(main_counter)
+ 65+  8D23 FE 04        		cp	4					; stwor przed Hero
+ 66+  8D25 C2 21 8A     		jp	nz,_printout
+ 67+  8D28
+ 68+  8D28 11 3B 92     		ld	de,f04
+ 69+  8D2B 18 CE        		jr	_direct
+ 70+  8D2D
+ 71+  8D2D              		include figure.asm
+# file opened: figure.asm
+  1++ 8D2D              talk_figure:
+  2++ 8D2D CD 7B 88     		call	message_area_clear
+  3++ 8D30 CD 84 85     		call	right_before
+  4++ 8D33 FE 26        		cp	FIGURE_CHAR
+  5++ 8D35 20 3C        		jr	nz, _nobody
+  6++ 8D37 3A F3 92     		ld	a,(hero.stat.str)
+  7++ 8D3A FE 0B        		cp	11
+  8++ 8D3C 38 20        		jr	c,_insf
+  9++ 8D3E 3A F4 92     		ld	a,(hero.stat.def)
+ 10++ 8D41 FE 09        		cp	9
+ 11++ 8D43 38 19        		jr	c,_insf
+ 12++ 8D45 E5           		push	hl
+ 13++ 8D46              		PRINT_STR	MSG_LINE1 + 2, talk_ready
+ 13++ 8D46 11 22 48    >		ld	de,MSG_LINE1 + 2
+ 13++ 8D49 01 B2 8D    >		ld	bc,talk_ready
+ 13++ 8D4C CD EA 87    >		call	pstring
+ 14++ 8D4F              		PRINT_STR	MSG_LINE2 + 1, talk_nxt_lvl
+ 14++ 8D4F 11 41 48    >		ld	de,MSG_LINE2 + 1
+ 14++ 8D52 01 C1 8D    >		ld	bc,talk_nxt_lvl
+ 14++ 8D55 CD EA 87    >		call	pstring
+ 15++ 8D58 E1           		pop		hl
+ 16++ 8D59 36 20        		ld	(hl),FLOOR_CHAR
+ 17++ 8D5B C3 57 84     		jp	refresh
+ 18++ 8D5E              _insf
+ 19++ 8D5E              		PRINT_STR	MSG_LINE1 + 1, talk_insf_str
+ 19++ 8D5E 11 21 48    >		ld	de,MSG_LINE1 + 1
+ 19++ 8D61 01 8E 8D    >		ld	bc,talk_insf_str
+ 19++ 8D64 CD EA 87    >		call	pstring
+ 20++ 8D67              		PRINT_STR	MSG_LINE2 + 2, talk_insf_def
+ 20++ 8D67 11 42 48    >		ld	de,MSG_LINE2 + 2
+ 20++ 8D6A 01 A0 8D    >		ld	bc,talk_insf_def
+ 20++ 8D6D CD EA 87    >		call	pstring
+ 21++ 8D70 C3 A5 84     		jp	wait_release
+ 22++ 8D73              _nobody
+ 23++ 8D73              		PRINT_STR	MSG_LINE1 + 3, talk_nobody
+ 23++ 8D73 11 23 48    >		ld	de,MSG_LINE1 + 3
+ 23++ 8D76 01 7F 8D    >		ld	bc,talk_nobody
+ 23++ 8D79 CD EA 87    >		call	pstring
+ 24++ 8D7C C3 A5 84     		jp	wait_release
+ 25++ 8D7F
+ 26++ 8D7F 4E 6F 62 6F  talk_nobody		db	"Nobody here...$"
+ 26++ 8D83 64 79 20 68
+ 26++ 8D87 65 72 65 2E
+ 26++ 8D8B 2E 2E 24
+ 27++ 8D8E 4E 65 65 64  talk_insf_str	db	"Need Hand Trowel.$"
+ 27++ 8D92 20 48 61 6E
+ 27++ 8D96 64 20 54 72
+ 27++ 8D9A 6F 77 65 6C
+ 27++ 8D9E 2E 24
+ 28++ 8DA0 26 20 4C 65  talk_insf_def	db	"& Leather Gloves.$"
+ 28++ 8DA4 61 74 68 65
+ 28++ 8DA8 72 20 47 6C
+ 28++ 8DAC 6F 76 65 73
+ 28++ 8DB0 2E 24
+ 29++ 8DB2 59 6F 75 20  talk_ready		db	"You are Ready!$"
+ 29++ 8DB6 61 72 65 20
+ 29++ 8DBA 52 65 61 64
+ 29++ 8DBE 79 21 24
+ 30++ 8DC1 4E 65 78 74  talk_nxt_lvl	db	"Next level ahead!$"
+ 30++ 8DC5 20 6C 65 76
+ 30++ 8DC9 65 6C 20 61
+ 30++ 8DCD 68 65 61 64
+ 30++ 8DD1 21 24
+ 31++ 8DD3
+# file closed: figure.asm
+ 72+  8DD3              		include data/sprites.dat
+# file opened: sprites.dat
+  1++ 8DD3
+  2++ 8DD3              ;	--------   sciany  ---------
+  3++ 8DD3              ;w18			db	0
+  4++ 8DD3              ;w17			db	0
+  5++ 8DD3              ;w16			db	0
+  6++ 8DD3              ;w15			db	0
+  7++ 8DD3              ;w14			db	0
+  8++ 8DD3 01           w18		db	1
+  9++ 8DD4 03 00 2C 2C  		db	3, 0,		44, 44, $FF
+  9++ 8DD8 FF
+ 10++ 8DD9
+ 11++ 8DD9 01           w17		db	1
+ 12++ 8DDA 03 02 2C 2C  		db	3, 2,		44, 44, $FF
+ 12++ 8DDE FF
+ 13++ 8DDF
+ 14++ 8DDF 01           w16		db	1
+ 15++ 8DE0 03 04 2C FF  		db	3, 4,		44, $FF
+ 16++ 8DE4
+ 17++ 8DE4 01           w15		db	1
+ 18++ 8DE5 03 05 2C 2C  		db	3, 5,		44, 44, $FF
+ 18++ 8DE9 FF
+ 19++ 8DEA
+ 20++ 8DEA 01           w14		db	1
+ 21++ 8DEB 03 07 2C 2C  		db	3, 7,		44, 44, $FF
+ 21++ 8DEF FF
+ 22++ 8DF0
+ 23++ 8DF0 02           w13		db	2
+ 24++ 8DF1 02 00 26 26  		db	2, 0,		38, 38, 42, $FF
+ 24++ 8DF5 2A FF
+ 25++ 8DF7 03 00 27 27  		db  3, 0,		39, 39, 43, $FF
+ 25++ 8DFB 2B FF
+ 26++ 8DFD
+ 27++ 8DFD 02           w12		db	2
+ 28++ 8DFE 02 02 26 26  		db	2, 2,		38, 38, $FF
+ 28++ 8E02 FF
+ 29++ 8E03 03 02 27 27  		db  3, 2,		39, 39, $FF
+ 29++ 8E07 FF
+ 30++ 8E08
+ 31++ 8E08              ;w12		db	2
+ 32++ 8E08              ;		db	2, 2,		38, 38, 42, $FF
+ 33++ 8E08              ;		db  3, 2,		39, 39, 43, $FF
+ 34++ 8E08
+ 35++ 8E08
+ 36++ 8E08 02           w11		db	2
+ 37++ 8E09 02 04 26 FF  		db	2, 4,		38, $FF
+ 38++ 8E0D 03 04 27 FF  		db  3, 4,		39, $FF
+ 39++ 8E11
+ 40++ 8E11              ;w10		db	2
+ 41++ 8E11              ;		db	2, 5,		38, 38, $FF
+ 42++ 8E11              ;		db  3, 5,		39, 39, $FF
+ 43++ 8E11
+ 44++ 8E11 02           w10		db	2
+ 45++ 8E12 02 04 28 26  		db	2, 4,		40, 38, 38, $FF
+ 45++ 8E16 26 FF
+ 46++ 8E18 03 04 29 27  		db  3, 4,		41, 39, 39, $FF
+ 46++ 8E1C 27 FF
+ 47++ 8E1E
+ 48++ 8E1E 02           w09		db	2
+ 49++ 8E1F 02 06 28 26  		db	2, 6,		40, 38, 38, $FF
+ 49++ 8E23 26 FF
+ 50++ 8E25 03 06 29 27  		db  3, 6,		41, 39, 39, $FF
+ 50++ 8E29 27 FF
+ 51++ 8E2B
+ 52++ 8E2B 02           w08		db	2
+ 53++ 8E2C 02 00 20 21  		db	2, 0,		32, 33, 33, 34, $FF
+ 53++ 8E30 21 22 FF
+ 54++ 8E33 03 00 20 21  		db  3, 0,		32, 33, 33, 35, $FF
+ 54++ 8E37 21 23 FF
+ 55++ 8E3A
+ 56++ 8E3A 02           w07		db	2
+ 57++ 8E3B 02 03 20 21  		db	2, 3,		32, 33, 33, $FF
+ 57++ 8E3F 21 FF
+ 58++ 8E41 03 03 20 21  		db  3, 3,		32, 33, 33, $FF
+ 58++ 8E45 21 FF
+ 59++ 8E47
+ 60++ 8E47 02           w06		db	2
+ 61++ 8E48 02 05 24 20  		db	2, 5,		36, 32, 33, 33, $FF
+ 61++ 8E4C 21 21 FF
+ 62++ 8E4F 03 05 25 20  		db  3, 5,		37, 32, 33, 33, $FF
+ 62++ 8E53 21 21 FF
+ 63++ 8E56
+ 64++ 8E56 04           w05		db	4
+ 65++ 8E57 01 00 03 10  		db	1, 0,		3, 16, 17, $FF
+ 65++ 8E5B 11 FF
+ 66++ 8E5D 02 00 02 12  		db  2, 0,		2, 18, 19, $FF
+ 66++ 8E61 13 FF
+ 67++ 8E63 03 00 01 14  		db  3, 0,		1, 20, 21, $FF
+ 67++ 8E67 15 FF
+ 68++ 8E69 04 00 00 16  		db  4, 0,		0, 22, 23, $FF
+ 68++ 8E6D 17 FF
+ 69++ 8E6F
+ 70++ 8E6F 04           w04		db	4
+ 71++ 8E70 01 01 02 00  		db	1, 1,	2, 0, 1, 0, 1, 2, 3, $FF
+ 71++ 8E74 01 00 01 02
+ 71++ 8E78 03 FF
+ 72++ 8E7A 02 01 00 03  		db	2, 1,	0, 3, 0, 1, 2, 1, 2, $FF
+ 72++ 8E7E 00 01 02 01
+ 72++ 8E82 02 FF
+ 73++ 8E84 03 01 02 00  		db	3, 1,	2, 0, 1, 2, 1, 0, 1, $FF
+ 73++ 8E88 01 02 01 00
+ 73++ 8E8C 01 FF
+ 74++ 8E8E 04 01 00 01  		db	4, 1,	0, 1, 0, 1, 2, 1, 0, $FF
+ 74++ 8E92 00 01 02 01
+ 74++ 8E96 00 FF
+ 75++ 8E98
+ 76++ 8E98 04           w03		db	4
+ 77++ 8E99 01 06 18 19  		db	1, 6,		24, 25, 2, $FF
+ 77++ 8E9D 02 FF
+ 78++ 8E9F 02 06 1A 1B  		db  2, 6,		26, 27, 0, $FF
+ 78++ 8EA3 00 FF
+ 79++ 8EA5 03 06 1C 1D  		db  3, 6,		28, 29, 2, $FF
+ 79++ 8EA9 02 FF
+ 80++ 8EAB 04 06 1E 1F  		db  4, 6,		30, 31, 0, $FF
+ 80++ 8EAF 00 FF
+ 81++ 8EB1
+ 82++ 8EB1 06           w02		db	6
+ 83++ 8EB2 00 00 04 FF  		db	0, 0,		4, $FF
+ 84++ 8EB6 01 00 05 FF  		db  1, 0,		5, $FF
+ 85++ 8EBA 02 00 06 FF  		db  2, 0,		6, $FF
+ 86++ 8EBE 03 00 07 FF  		db  3, 0,		7, $FF
+ 87++ 8EC2 04 00 08 FF  		db  4, 0,		8, $FF
+ 88++ 8EC6 05 00 09 FF  		db  5, 0,		9, $FF
+ 89++ 8ECA
+ 90++ 8ECA 06           w01		db	6
+ 91++ 8ECB 00 08 0A FF  		db	0, 8,		10, $FF
+ 92++ 8ECF 01 08 0B FF  		db  1, 8,		11, $FF
+ 93++ 8ED3 02 08 0C FF  		db  2, 8,		12, $FF
+ 94++ 8ED7 03 08 0D FF  		db  3, 8,		13, $FF
+ 95++ 8EDB 04 08 0E FF  		db  4, 8,		14, $FF
+ 96++ 8EDF 05 08 0F FF  		db  5, 8,		15, $FF
+ 97++ 8EE3
+ 98++ 8EE3 CA 8E B1 8E  wall_sprites	dw	    w01,    w02
+ 99++ 8EE7 98 8E 6F 8E  				dw	    w03,w04,w05
+ 99++ 8EEB 56 8E
+100++ 8EED 47 8E 3A 8E  				dw	    w06,w07,w08
+100++ 8EF1 2B 8E
+101++ 8EF3 1E 8E 11 8E  				dw	w09,w10,w11,w12,w13
+101++ 8EF7 08 8E FD 8D
+101++ 8EFB F0 8D
+102++ 8EFD EA 8D E4 8D  				dw	w14,w15,w16,w17,w18
+102++ 8F01 DF 8D D9 8D
+102++ 8F05 D3 8D
+103++ 8F07
+104++ 8F07              ;  ------  drzwi zamkniete  --------
+105++ 8F07              ;d18			db	0
+106++ 8F07              ;d17			db	0
+107++ 8F07              ;d16			db	0
+108++ 8F07              ;d15			db	0
+109++ 8F07              ;d14			db	0
+110++ 8F07 01           d18		db	1
+111++ 8F08 03 00 2C 2C  		db	3, 0,		44, 44, $FF
+111++ 8F0C FF
+112++ 8F0D 01           d17		db	1
+113++ 8F0E 03 02 2C 2C  		db	3, 2,		44, 44, $FF
+113++ 8F12 FF
+114++ 8F13 01           d16		db	1
+115++ 8F14 03 04 2C FF  		db	3, 4,		44, $FF
+116++ 8F18 01           d15		db	1
+117++ 8F19 03 05 2C 2C  		db	3, 5,		44, 44, $FF
+117++ 8F1D FF
+118++ 8F1E 01           d14		db	1
+119++ 8F1F              ;		db	3, 7,		44, 44, $FF
+120++ 8F1F 02           d13		db	2
+121++ 8F20 02 00 26 26  		db	2, 0,		38, 38, 42, $FF
+121++ 8F24 2A FF
+122++ 8F26 03 00 27 27  		db  3, 0,		39, 39, 43, $FF
+122++ 8F2A 2B FF
+123++ 8F2C              ;d12		db	2
+124++ 8F2C              ;		db	2, 2,		38, 38, 42, $FF
+125++ 8F2C              ;		db  3, 2,		39, 39, 43, $FF
+126++ 8F2C 02           d12		db	2
+127++ 8F2D 02 02 26 26  		db	2, 2,		38, 38, $FF
+127++ 8F31 FF
+128++ 8F32 03 02 27 27  		db  3, 2,		39, 39, $FF
+128++ 8F36 FF
+129++ 8F37 02           d11		db	2
+130++ 8F38 02 04 48 FF  		db	2, 4,		72, $FF
+131++ 8F3C 03 04 49 FF  		db  3, 4,		73, $FF
+132++ 8F40 02           d10		db	2
+133++ 8F41 02 04 28 26  		db	2, 4,		40, 38, 38, $FF
+133++ 8F45 26 FF
+134++ 8F47 03 04 29 27  		db  3, 4,		41, 39, 39, $FF
+134++ 8F4B 27 FF
+135++ 8F4D              ;d10		db	2
+136++ 8F4D              ;		db	2, 5,		38, 38, $FF
+137++ 8F4D              ;		db  3, 5,		39, 39, $FF
+138++ 8F4D 02           d09		db	2
+139++ 8F4E 02 06 28 26  		db	2, 6,		40, 38, 38, $FF
+139++ 8F52 26 FF
+140++ 8F54 03 06 29 27  		db  3, 6,		41, 39, 39, $FF
+140++ 8F58 27 FF
+141++ 8F5A 02           d08		db	2
+142++ 8F5B 02 00 20 21  		db	2, 0,		32, 33, 33, 34, $FF
+142++ 8F5F 21 22 FF
+143++ 8F62 03 00 20 21  		db  3, 0,		32, 33, 33, 35, $FF
+143++ 8F66 21 23 FF
+144++ 8F69 02           d07		db	2
+145++ 8F6A 02 03 44 46  		db	2, 3,		68, 70, 69, $FF
+145++ 8F6E 45 FF
+146++ 8F70 03 03 44 47  		db  3, 3,		68, 71, 69, $FF
+146++ 8F74 45 FF
+147++ 8F76 02           d06		db	2
+148++ 8F77 02 05 24 20  		db	2, 5,		36, 32, 33, 33, $FF
+148++ 8F7B 21 21 FF
+149++ 8F7E 03 05 25 20  		db  3, 5,		37, 32, 33, 33, $FF
+149++ 8F82 21 21 FF
+150++ 8F85 04           d05		db	4
+151++ 8F86 01 00 03 3C  		db	1, 0,		3, 60, 61, $FF
+151++ 8F8A 3D FF
+152++ 8F8C 02 00 02 3E  		db  2, 0,		2, 62, 63, $FF
+152++ 8F90 3F FF
+153++ 8F92 03 00 01 40  		db  3, 0,		1, 64, 65, $FF
+153++ 8F96 41 FF
+154++ 8F98 04 00 00 42  		db  4, 0,		0, 66, 67, $FF
+154++ 8F9C 43 FF
+155++ 8F9E 04           d04		db	4
+156++ 8F9F 01 01 02 00  		db	1, 1,	2, 0, 51, 46, 45, 2, 3, $FF
+156++ 8FA3 33 2E 2D 02
+156++ 8FA7 03 FF
+157++ 8FA9 02 01 00 03  		db	2, 1,	0, 3, 47, 50, 48, 0, 2, $FF
+157++ 8FAD 2F 32 30 00
+157++ 8FB1 02 FF
+158++ 8FB3 03 01 02 00  		db	3, 1,	2, 0, 47, 50, 49, 0, 1, $FF
+158++ 8FB7 2F 32 31 00
+158++ 8FBB 01 FF
+159++ 8FBD 04 01 00 01  		db	4, 1,	0, 1, 51, 46, 45, 0, 0, $FF
+159++ 8FC1 33 2E 2D 00
+159++ 8FC5 00 FF
+160++ 8FC7 04           d03		db	4
+161++ 8FC8 01 06 34 35  		db	1, 6,		52, 53, 2, $FF
+161++ 8FCC 02 FF
+162++ 8FCE 02 06 36 37  		db  2, 6,		54, 55, 0, $FF
+162++ 8FD2 00 FF
+163++ 8FD4 03 06 38 39  		db  3, 6,		56, 57, 2, $FF
+163++ 8FD8 02 FF
+164++ 8FDA 04 06 3A 3B  		db  4, 6,		58, 59, 0, $FF
+164++ 8FDE 00 FF
+165++ 8FE0 06           d02		db	6
+166++ 8FE1 00 00 04 FF  		db	0, 0,		4, $FF
+167++ 8FE5 01 00 05 FF  		db  1, 0,		5, $FF
+168++ 8FE9 02 00 06 FF  		db  2, 0,		6, $FF
+169++ 8FED 03 00 07 FF  		db  3, 0,		7, $FF
+170++ 8FF1 04 00 08 FF  		db  4, 0,		8, $FF
+171++ 8FF5 05 00 09 FF  		db  5, 0,		9, $FF
+172++ 8FF9 06           d01		db	6
+173++ 8FFA 00 08 0A FF  		db	0, 8,		10, $FF
+174++ 8FFE 01 08 0B FF  		db  1, 8,		11, $FF
+175++ 9002 02 08 0C FF  		db  2, 8,		12, $FF
+176++ 9006 03 08 0D FF  		db  3, 8,		13, $FF
+177++ 900A 04 08 0E FF  		db  4, 8,		14, $FF
+178++ 900E 05 08 0F FF  		db  5, 8,		15, $FF
+179++ 9012
+180++ 9012 F9 8F E0 8F  c_door_sprites	dw	    d01,    d02
+181++ 9016 C7 8F 9E 8F  		dw			    d03,d04,d05
+181++ 901A 85 8F
+182++ 901C 76 8F 69 8F  		dw				d06,d07,d08
+182++ 9020 5A 8F
+183++ 9022 4D 8F 40 8F  		dw			d09,d10,d11,d12,d13
+183++ 9026 37 8F 2C 8F
+183++ 902A 1F 8F
+184++ 902C 1E 8F 18 8F  		dw			d14,d15,d16,d17,d18
+184++ 9030 13 8F 0D 8F
+184++ 9034 07 8F
+185++ 9036
+186++ 9036              ;  ------  drzwi otwarte  --------
+187++ 9036              ;o18			db	0
+188++ 9036              ;o17			db	0
+189++ 9036              ;o16			db	0
+190++ 9036              ;o15			db	0
+191++ 9036              ;o14			db	0
+192++ 9036 01           o18		db	1
+193++ 9037 03 00 2C 2C  		db	3, 0,		44, 44, $FF
+193++ 903B FF
+194++ 903C 01           o17		db	1
+195++ 903D 03 02 2C 2C  		db	3, 2,		44, 44, $FF
+195++ 9041 FF
+196++ 9042 01           o16		db	1
+197++ 9043 03 04 2C FF  		db	3, 4,		44, $FF
+198++ 9047 01           o15		db	1
+199++ 9048 03 05 2C 2C  		db	3, 5,		44, 44, $FF
+199++ 904C FF
+200++ 904D 01           o14		db	1
+201++ 904E              ;		db	3, 7,		44, 44, $FF
+202++ 904E 02           o13		db	2
+203++ 904F 02 00 26 26  		db	2, 0,		38, 38, 42, $FF
+203++ 9053 2A FF
+204++ 9055 03 00 27 27  		db  3, 0,		39, 39, 43, $FF
+204++ 9059 2B FF
+205++ 905B              ;o12		db	2
+206++ 905B              ;		db	2, 2,		38, 38, 42, $FF
+207++ 905B              ;		db  3, 2,		39, 39, 43, $FF
+208++ 905B 02           o12		db	2
+209++ 905C 02 02 26 26  		db	2, 2,		38, 38, $FF
+209++ 9060 FF
+210++ 9061 03 02 27 27  		db  3, 2,		39, 39, $FF
+210++ 9065 FF
+211++ 9066 00           o11		db	0
+212++ 9067              ;o11		db	2
+213++ 9067              ;		db	2, 4,		38, $FF
+214++ 9067              ;		db  3, 4,		39, $FF
+215++ 9067 02           o10		db	2
+216++ 9068 02 04 28 26  		db	2, 4,		40, 38, 38, $FF
+216++ 906C 26 FF
+217++ 906E 03 04 29 27  		db  3, 4,		41, 39, 39, $FF
+217++ 9072 27 FF
+218++ 9074              ;o10		db	2
+219++ 9074              ;		db	2, 5,		38, 38, $FF
+220++ 9074              ;		db  3, 5,		39, 39, $FF
+221++ 9074 02           o09		db	2
+222++ 9075 02 06 28 26  		db	2, 6,		40, 38, 38, $FF
+222++ 9079 26 FF
+223++ 907B 03 06 29 27  		db  3, 6,		41, 39, 39, $FF
+223++ 907F 27 FF
+224++ 9081 02           o08		db	2
+225++ 9082 02 00 20 21  		db	2, 0,		32, 33, 33, 34, $FF
+225++ 9086 21 22 FF
+226++ 9089 03 00 20 21  		db  3, 0,		32, 33, 33, 35, $FF
+226++ 908D 21 23 FF
+227++ 9090 04           o07		db	4
+228++ 9091 02 03 20 FF  		db	2, 3,		32, $FF
+229++ 9095 03 03 20 FF  		db  3, 3,		32, $FF
+230++ 9099 02 05 20 FF  		db	2, 5,		32, $FF
+231++ 909D 03 05 20 FF  		db  3, 5,		32, $FF
+232++ 90A1 02           o06		db	2
+233++ 90A2 02 05 24 20  		db	2, 5,		36, 32, 33, 33, $FF
+233++ 90A6 21 21 FF
+234++ 90A9 03 05 25 20  		db  3, 5,		37, 32, 33, 33, $FF
+234++ 90AD 21 21 FF
+235++ 90B0              o05
+236++ 90B0 04           		db	4
+237++ 90B1 01 01 3C FF  		db	1, 1,		60, $FF
+238++ 90B5 02 01 3E FF  		db  2, 1,		62, $FF
+239++ 90B9 03 01 40 FF  		db  3, 1,		64, $FF
+240++ 90BD 04 01 42 FF  		db  4, 1,		66, $FF
+241++ 90C1
+242++ 90C1              ;o05		db	4
+243++ 90C1              ;		db	1, 0,		3, 60, 61, $FF
+244++ 90C1              ;		db  2, 0,		2, 62, 63, $FF
+245++ 90C1              ;		db  3, 0,		1, 64, 65, $FF
+246++ 90C1              ;		db  4, 0,		0, 66, 67, $FF
+247++ 90C1 08           o04		db	8
+248++ 90C2 01 01 02 00  		db	1, 1,		2, 0, $FF, 1, 6,	2, 3, $FF
+248++ 90C6 FF 01 06 02
+248++ 90CA 03 FF
+249++ 90CC 02 01 00 03  		db	2, 1,		0, 3, $FF, 2, 6,	0, 2, $FF
+249++ 90D0 FF 02 06 00
+249++ 90D4 02 FF
+250++ 90D6 03 01 02 00  		db	3, 1,		2, 0, $FF, 3, 6,	0, 1, $FF
+250++ 90DA FF 03 06 00
+250++ 90DE 01 FF
+251++ 90E0 04 01 00 01  		db	4, 1,		0, 1, $FF, 4, 6,	0, 0, $FF
+251++ 90E4 FF 04 06 00
+251++ 90E8 00 FF
+252++ 90EA 04           o03		db	4
+253++ 90EB 01 06 34 FF  		db	1, 6,		 52, $FF
+254++ 90EF 02 06 36 FF  		db  2, 6,		 54, $FF
+255++ 90F3 03 06 38 FF  		db  3, 6,		 56, $FF
+256++ 90F7 04 06 3A FF  		db  4, 6,		 58, $FF
+257++ 90FB              ;		db	1, 6,		52, 53, 2, $FF
+258++ 90FB              ;		db  2, 6,		54, 55, 0, $FF
+259++ 90FB              ;		db  3, 6,		56, 57, 2, $FF
+260++ 90FB              ;		db  4, 6,		58, 59, 0, $FF
+261++ 90FB 06           o02		db	6
+262++ 90FC 00 00 04 FF  		db	0, 0,		4, $FF
+263++ 9100 01 00 05 FF  		db  1, 0,		5, $FF
+264++ 9104 02 00 06 FF  		db  2, 0,		6, $FF
+265++ 9108 03 00 07 FF  		db  3, 0,		7, $FF
+266++ 910C 04 00 08 FF  		db  4, 0,		8, $FF
+267++ 9110 05 00 09 FF  		db  5, 0,		9, $FF
+268++ 9114 06           o01		db	6
+269++ 9115 00 08 0A FF  		db	0, 8,		10, $FF
+270++ 9119 01 08 0B FF  		db  1, 8,		11, $FF
+271++ 911D 02 08 0C FF  		db  2, 8,		12, $FF
+272++ 9121 03 08 0D FF  		db  3, 8,		13, $FF
+273++ 9125 04 08 0E FF  		db  4, 8,		14, $FF
+274++ 9129 05 08 0F FF  		db  5, 8,		15, $FF
+275++ 912D
+276++ 912D              o_door_sprites
+277++ 912D 14 91 FB 90  				dw	    o01,    o02
+278++ 9131 EA 90 C1 90  				dw	    o03,o04,o05
+278++ 9135 B0 90
+279++ 9137 A1 90 90 90  				dw	    o06,o07,o08
+279++ 913B 81 90
+280++ 913D 74 90 67 90  				dw	o09,o10,o11,o12,o13
+280++ 9141 66 90 5B 90
+280++ 9145 4E 90
+281++ 9147 4D 90 47 90  				dw	o14,o15,o16,o17,o18
+281++ 914B 42 90 3C 90
+281++ 914F 36 90
+282++ 9151
+283++ 9151              ;	-----	klucze  -----
+284++ 9151 00           k18		db	0
+285++ 9152 00           k17		db	0
+286++ 9153 00           k16		db	0
+287++ 9154 00           k15		db	0
+288++ 9155 00           k14		db	0
+289++ 9156 00           k13		db	0
+290++ 9157 00           k12		db	0
+291++ 9158 00           k11		db	0
+292++ 9159 00           k10		db	0
+293++ 915A 00           k09		db	0
+294++ 915B 01           k08		db	1
+295++ 915C 04 01 59 FF  		db	4, 1,		89, $FF
+296++ 9160 01           k07		db	1
+297++ 9161 04 04 59 FF  		db	4, 4,		89, $FF
+298++ 9165 01           k06		db	1
+299++ 9166 04 07 59 FF  		db	4, 7,		89, $FF
+300++ 916A 01           k05		db	1
+301++ 916B 04 01 58 FF  		db	4, 1,		88, $FF
+302++ 916F 01           k04		db	1
+303++ 9170 04 04 58 FF  		db	4, 4,		88, $FF
+304++ 9174 01           k03		db	1
+305++ 9175 04 07 58 FF  		db	4, 7,		88, $FF
+306++ 9179 00           k02		db	0
+307++ 917A 00           k01		db	0
+308++ 917B
+309++ 917B              key_sprites
+310++ 917B 7A 91 79 91  		dw			    k01,    k02
+311++ 917F 74 91 6F 91  		dw			    k03,k04,k05
+311++ 9183 6A 91
+312++ 9185 65 91 60 91  		dw				k06,k07,k08
+312++ 9189 5B 91
+313++ 918B 5A 91 59 91  		dw			k09,k10,k11,k12,k13
+313++ 918F 58 91 57 91
+313++ 9193 56 91
+314++ 9195 55 91 54 91  		dw			k14,k15,k16,k17,k18
+314++ 9199 53 91 52 91
+314++ 919D 51 91
+315++ 919F
+316++ 919F              ;	-----	bronie  -----
+317++ 919F 00           b18		db	0
+318++ 91A0 00           b17		db	0
+319++ 91A1 00           b16		db	0
+320++ 91A2 00           b15		db	0
+321++ 91A3 00           b14		db	0
+322++ 91A4 00           b13		db	0
+323++ 91A5 00           b12		db	0
+324++ 91A6 00           b11		db	0
+325++ 91A7 00           b10		db	0
+326++ 91A8 00           b09		db	0
+327++ 91A9 01           b08		db	1
+328++ 91AA 04 01 59 FF  		db	4, 1,		89, $FF
+329++ 91AE 01           b07		db	1
+330++ 91AF 04 04 59 FF  		db	4, 4,		89, $FF
+331++ 91B3 01           b06		db	1
+332++ 91B4 04 07 59 FF  		db	4, 7,		89, $FF
+333++ 91B8 01           b05		db	1
+334++ 91B9 04 01 5A FF  		db	4, 1,		90, $FF
+335++ 91BD 01           b04		db	1
+336++ 91BE 04 04 5A FF  		db	4, 4,		90, $FF
+337++ 91C2 01           b03		db	1
+338++ 91C3 04 07 5A FF  		db	4, 7,		90, $FF
+339++ 91C7 00           b02		db	0
+340++ 91C8 00           b01		db	0
+341++ 91C9
+342++ 91C9              weapon_sprites
+343++ 91C9 C8 91 C7 91  		dw			    b01,    b02
+344++ 91CD C2 91 BD 91  		dw			    b03,b04,b05
+344++ 91D1 B8 91
+345++ 91D3 B3 91 AE 91  		dw				b06,b07,b08
+345++ 91D7 A9 91
+346++ 91D9 A8 91 A7 91  		dw			b09,b10,b11,b12,b13
+346++ 91DD A6 91 A5 91
+346++ 91E1 A4 91
+347++ 91E3 A3 91 A2 91  		dw			b14,b15,b16,b17,b18
+347++ 91E7 A1 91 A0 91
+347++ 91EB 9F 91
+348++ 91ED
+349++ 91ED              ;	-----	zbroje  -----
+350++ 91ED 00           a18		db	0
+351++ 91EE 00           a17		db	0
+352++ 91EF 00           a16		db	0
+353++ 91F0 00           a15		db	0
+354++ 91F1 00           a14		db	0
+355++ 91F2 00           a13		db	0
+356++ 91F3 00           a12		db	0
+357++ 91F4 00           a11		db	0
+358++ 91F5 00           a10		db	0
+359++ 91F6 00           a09		db	0
+360++ 91F7 01           a08		db	1
+361++ 91F8 04 01 59 FF  		db	4, 1,		89, $FF
+362++ 91FC 01           a07		db	1
+363++ 91FD 04 04 59 FF  		db	4, 4,		89, $FF
+364++ 9201 01           a06		db	1
+365++ 9202 04 07 59 FF  		db	4, 7,		89, $FF
+366++ 9206 01           a05		db	1
+367++ 9207 04 01 5B FF  		db	4, 1,		91, $FF
+368++ 920B 01           a04		db	1
+369++ 920C 04 04 5B FF  		db	4, 4,		91, $FF
+370++ 9210 01           a03		db	1
+371++ 9211 04 07 5B FF  		db	4, 7,		91, $FF
+372++ 9215 00           a02		db	0
+373++ 9216 00           a01		db	0
+374++ 9217
+375++ 9217              armour_sprites
+376++ 9217 16 92 15 92  		dw			    a01,    a02
+377++ 921B 10 92 0B 92  		dw			    a03,a04,a05
+377++ 921F 06 92
+378++ 9221 01 92 FC 91  		dw				a06,a07,a08
+378++ 9225 F7 91
+379++ 9227 F6 91 F5 91  		dw			a09,a10,a11,a12,a13
+379++ 922B F4 91 F3 91
+379++ 922F F2 91
+380++ 9231 F1 91 F0 91  		dw			a14,a15,a16,a17,a18
+380++ 9235 EF 91 EE 91
+380++ 9239 ED 91
+381++ 923B
+382++ 923B              ;	----- postacie ------
+383++ 923B 06           f04		db	6
+384++ 923C 00 04 5C 5D  		db	0, 4,		92, 93, $FF
+384++ 9240 FF
+385++ 9241 01 04 5E 5F  		db	1, 4,		94, 95, $FF
+385++ 9245 FF
+386++ 9246 02 03 60 61  		db	2, 3,		96, 97, 98, $FF
+386++ 924A 62 FF
+387++ 924C 03 03 63 64  		db	3, 3,		99, 100, 101, $FF
+387++ 9250 65 FF
+388++ 9252 04 04 66 67  		db	4, 4,		102, 103, $FF
+388++ 9256 FF
+389++ 9257 05 04 68 69  		db	5, 4,		104, 105, $FF
+389++ 925B FF
+390++ 925C
+391++ 925C              ;figure_sprites
+392++ 925C              ;		dw			    f01,    f02
+393++ 925C              ;		dw			    f03,f04,f05
+394++ 925C              ;		dw				f06,f07,f08
+395++ 925C              ;		dw			f09,f10,f11,f12,f13
+396++ 925C              ;		dw			f14,f15,f16,f17,f18
+397++ 925C
+# file closed: sprites.dat
+ 73+  925C
+# file closed: 3d.asm
+572   925C              		include math.asm
+# file opened: math.asm
+  1+  925C              ; --------------------------------
+  2+  925C              ; Mnozenie dwoch liczb 8-bitowych
+  3+  925C              ; czynniki: B,C. Iloczyn: HL
+  4+  925C              ; --------------------------------
+  5+  925C              mul8:
+  6+  925C C5           		push	bc
+  7+  925D D5           		push	de
+  8+  925E
+  9+  925E 21 00 00     		ld	hl,0
+ 10+  9261 79           		ld	a,c
+ 11+  9262 16 00        		ld	d,0
+ 12+  9264 58           		ld	e,b
+ 13+  9265 06 08        		ld	b,8			; licznik bitow
+ 14+  9267 29           _loop:	add	hl,hl
+ 15+  9268 17           		rla
+ 16+  9269 30 01        		jr	nc,_skip
+ 17+  926B 19           		add	hl,de
+ 18+  926C 10 F9        _skip:	djnz	_loop
+ 19+  926E
+ 20+  926E D1           		pop	de
+ 21+  926F C1           		pop	bc
+ 22+  9270 C9           		ret
+ 23+  9271
+ 24+  9271              ; -----------------------------------
+ 25+  9271              ; Mnozenie takich liczb aby iloczyn
+ 26+  9271              ; byl 8-bitowy.
+ 27+  9271              ; czynniki: B,C   iloczyn: A
+ 28+  9271              ; -----------------------------------
+ 29+  9271              ; mulproduct8:
+ 30+  9271              ;		push	bc
+ 31+  9271              ;		ld	a,0
+ 32+  9271              ;	nxtadd:	add a,c
+ 33+  9271              ;		djnz nxtadd
+ 34+  9271              ;		pop	bc
+ 35+  9271              ;		ret
+ 36+  9271              ; Szybsza dla duzych mnoznikow ( > 8 )
+ 37+  9271              ; mulproduct8:
+ 38+  9271              ;		push	bc
+ 39+  9271              ;
+ 40+  9271              ;		ld	a,0
+ 41+  9271              ;	loop1:	bit	0,b
+ 42+  9271              ;		jr	z,skip2
+ 43+  9271              ;		add	a,c
+ 44+  9271              ;	skip2:	sla	c
+ 45+  9271              ;		srl	b
+ 46+  9271              ;		jr	nz,loop1
+ 47+  9271              ;		pop	bc
+ 48+  9271              ;		ret
+ 49+  9271
+ 50+  9271
+ 51+  9271              ;-----------------------------
+ 52+  9271              ; Funkja zamienia liczbe w A
+ 53+  9271              ; na pare cyfr ASCII w C i B
+ 54+  9271              ; np.0Fh -> C=1, B=5
+ 55+  9271              ;-----------------------------
+ 56+  9271              h2asci:
+ 57+  9271 0E 00        		ld	c,0
+ 58+  9273              _loop2:
+ 59+  9273 47           		ld	b,a
+ 60+  9274 FE 0A        		cp	10
+ 61+  9276 38 05        		jr	c,_fine	;jesli a<10 koniec
+ 62+  9278 0C           		inc	c
+ 63+  9279 D6 0A        		sub	10
+ 64+  927B 18 F6        		jr	_loop2
+ 65+  927D              _fine:
+ 66+  927D C6 30        		add	a,'0'
+ 67+  927F 47           		ld	b,a
+ 68+  9280 79           		ld	a,c
+ 69+  9281 C6 30        		add	a,'0'
+ 70+  9283 4F           		ld	c,a
+ 71+  9284 C9           		ret
+ 72+  9285
+ 73+  9285              ; --------------------------------------
+ 74+  9285              ; Zamiana 2-cyfrowej liczby dziesietnej
+ 75+  9285              ; w formacie ASCII na liczbe 8-bit
+ 76+  9285              ; input: (HL)	output: A
+ 77+  9285              ; --------------------------------------
+ 78+  9285              ascii2num:
+ 79+  9285 7E           		ld	a,(hl)			; pierwszy obrot Y
+ 80+  9286 E6 0F        		and	0Fh			; minus ascii bits
+ 81+  9288 87           		add	a,a			; x 2
+ 82+  9289 4F           		ld	c,a
+ 83+  928A 87           		add	a,a
+ 84+  928B 87           		add	a,a
+ 85+  928C 81           		add	a,c			; x 10
+ 86+  928D 4F           		ld	c,a			; save dziesiatki
+ 87+  928E 23           		inc	hl
+ 88+  928F 7E           		ld	a,(hl)
+ 89+  9290 E6 0F        		and	0Fh
+ 90+  9292 81           		add	a,c			; dziesietne + jednoscioci
+ 91+  9293 23           		inc	hl
+ 92+  9294 C9           		ret
+ 93+  9295              ; -------------------------------------------------------------------
+ 94+  9295              ; Zamienia liczbe z zakresu 1-16 na slowo z ustawionym bitem od 1-16
+ 95+  9295              ; IN:	A - liczba 1 - 16
+ 96+  9295              ;		DE - adres slowa flag
+ 97+  9295              ; OUT:	A - ustawiony odpowiedni bit flagi
+ 98+  9295              ;		C - odpowiedni bajt flagi
+ 99+  9295              ; -------------------------------------------------------------------
+100+  9295              nr_to_bit:
+101+  9295 FE 09        		cp	9
+102+  9297 38 03        		jr	c,_low_flags
+103+  9299 13           		inc	de
+104+  929A D6 08        		sub	8
+105+  929C              _low_flags:
+106+  929C 47           		ld	b,a						; ile razy przesuwka
+107+  929D 1A           		ld	a,(de)					; hl zajete wyzej
+108+  929E 4F           		ld	c,a
+109+  929F 3E 01        		ld	a,%00000001
+110+  92A1              _roll_right:
+111+  92A1 0F           		rrca
+112+  92A2 10 FD        		djnz	_roll_right
+113+  92A4 C9           		ret
+114+  92A5
+115+  92A5              ; -------------------------------------------------------------------
+116+  92A5              ; Zamienia slowo z ustawionym bitem od 1-16 na liczbe z zakresu 1-16
+117+  92A5              ; IN:	DE - adres slowa flag
+118+  92A5              ; OUT:	C - liczba od 1 do 16
+119+  92A5              ; -------------------------------------------------------------------
+120+  92A5
+# file closed: math.asm
+573   92A5              		include keyboard.asm
+# file opened: keyboard.asm
+  1+  92A5              scan_keyboard:
+  2+  92A5
+  3+  92A5 3E BF        		ld	a,Enter_H
+  4+  92A7 DB FE        		in	a,(0FEh)
+  5+  92A9 2F           		cpl
+  6+  92AA E6 0E        		and	%00001110			; jkl
+  7+  92AC C0           		ret	nz
+  8+  92AD
+  9+  92AD 3E DF        		ld	a,P_Y
+ 10+  92AF DB FE        		in	a,(0FEh)
+ 11+  92B1 47           		ld	b,a
+ 12+  92B2 2F           		cpl
+ 13+  92B3 E6 04        		and	%00000100			; i
+ 14+  92B5 20 23        		jr	nz,_set_bit0
+ 15+  92B7
+ 16+  92B7 78           		ld	a,b
+ 17+  92B8 2F           		cpl
+ 18+  92B9 E6 01        		and	%00000001			; p
+ 19+  92BB 20 29        		jr	nz,_set_bit7
+ 20+  92BD
+ 21+  92BD 3E FD        		ld	a,A_G
+ 22+  92BF DB FE        		in	a,(0FEh)
+ 23+  92C1 2F           		cpl
+ 24+  92C2 E6 02        		and	%00000010			; s
+ 25+  92C4 20 17        		jr	nz,_set_bit4
+ 26+  92C6
+ 27+  92C6 3E FB        		ld	a,Q_T
+ 28+  92C8 DB FE        		in	a,(0FEh)
+ 29+  92CA 47           		ld	b,a
+ 30+  92CB 2F           		cpl
+ 31+  92CC E6 10        		and	%00010000			; t
+ 32+  92CE 20 10        		jr	nz,_set_bit5
+ 33+  92D0
+ 34+  92D0 3E FE        		ld	a,CS_V
+ 35+  92D2 DB FE        		in	a,(0FEh)
+ 36+  92D4 2F           		cpl
+ 37+  92D5 E6 08        		and	%00001000			; c
+ 38+  92D7 20 0A        		jr	nz,_set_bit6
+ 39+  92D9
+ 40+  92D9 C9           		ret
+ 41+  92DA
+ 42+  92DA              _set_bit0:
+ 43+  92DA 3E 01        		ld	a,1
+ 44+  92DC C9           		ret
+ 45+  92DD              _set_bit4:
+ 46+  92DD 3E 10        		ld	a,16
+ 47+  92DF C9           		ret
+ 48+  92E0              _set_bit5:
+ 49+  92E0 3E 20        		ld	a,32
+ 50+  92E2 C9           		ret
+ 51+  92E3              _set_bit6:
+ 52+  92E3 3E 40        		ld	a,64
+ 53+  92E5 C9           		ret
+ 54+  92E6              _set_bit7:
+ 55+  92E6 3E 80        		ld	a,128
+ 56+  92E8 C9           		ret
+ 57+  92E9
+# file closed: keyboard.asm
+574   92E9
+575   92E9              		include	data/vars.dat
+# file opened: vars.dat
+  1+  92E9              ;=========     V A R I A B L E S     =========
+  2+  92E9
+  3+  92E9 20 0C 00 00  map	Map	{ 32, 12, $0000 }
+  4+  92ED
+  5+  92ED              ;------ hero ----------
+  6+  92ED              hero			Character	{
+  7+  92ED 02 02 01 00  				2, 2, 1, $00,				; pozycja i offset
+  7+  92F1 00
+  8+  92F2 10 0A 08     				16, 10, 8,					; stats
+  9+  92F5 00           				0,							; bron
+ 10+  92F6 00           				0,							; zbroja
+ 11+  92F7 A5 80        				%10100101, %10000000		; klucze
+ 12+  92F9              							 }
+ 13+  92F9              ; ------- Statyczne -----------------
+ 14+  92F9 5E 3E 76 3C  hero_i			db	'^','>','v','<'			; ikony Hero
+ 15+  92FD 00 FF 01 00  hero_s			db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
+ 15+  9301 00 01 FF 00
+ 16+  9305 00 01 00 FF  neighbor_offs:	db	0,1,0,-1
+ 17+  9309
+ 18+  9309              ; ------- Inventory ------------------------------
+ 19+  9309              stat_info:
+ 20+  9309 20 68 70 3A  			db	" hp:00$"
+ 20+  930D 30 30 24
+ 21+  9310 73 74 72 3A  			db	"str:00$"
+ 21+  9314 30 30 24
+ 22+  9317 64 65 66 3A  			db	"def:00$"
+ 22+  931B 30 30 24
+ 23+  931E 77 65 70 3A  __1st		db	"wep:   $"
+ 23+  9322 20 20 20 24
+ 24+  9326 61 6D 72 3A  			db	"amr:   $"
+ 24+  932A 20 20 20 24
+ 25+  932E              __lst
+ 26+  932E
+ 27+  932E              LABELS_NUMBER	equ		( __lst - __1st ) / 8
+ 28+  932E
+ 29+  932E              ; ------- Weapons & Armour names ---------------
+ 30+  932E              weapon_names:
+ 31+  932E 48 4E 44     			db	"HND"			; Hands
+ 32+  9331 54 52 4F     			db	"TRO"			; Hand Trowel
+ 33+  9334 53 48 45     			db	"SHE"			; Pruning Shears
+ 34+  9337 57 45 45     			db	"WEE"			; Garden Weeder
+ 35+  933A 48 52 41     			db	"HRA"			; Hand Rake
+ 36+  933D 53 49 43     			db	"SIC"			; Sickle
+ 37+  9340 54 52 49     			db	"TRI"			; Hedge Trimmers
+ 38+  9343 4C 4F 50     			db	"LOP"			; Loppers
+ 39+  9346 48 4F 45     			db	"HOE"			; Garden Hoe
+ 40+  9349 50 49 54     			db	"PIT"			; Pitchfork
+ 41+  934C 47 52 41     			db	"GRA"			; Garden Rake
+ 42+  934F 53 50 41     			db	"SPA"			; Spade
+ 43+  9352 53 48 4F     			db	"SHO"			; Shovel
+ 44+  9355 50 49 43     			db	"PIC"			; Pickaxe
+ 45+  9358 4D 41 43     			db	"MAC"			; Machete
+ 46+  935B 41 58 45     			db	"AXE"			; Axe
+ 47+  935E 43 48 41     			db	"CHA"			; Chainsaw
+ 48+  9361              armour_names:
+ 49+  9361 53 4B 4E     			db	"SKN"			; Skin
+ 50+  9364 47 4C 4F     			db	"GLO"			; Thick Leather Gloves
+ 51+  9367 53 41 43     			db	"SAC"			; Burlap Sack
+ 52+  936A 46 4C 41     			db	"FLA"			; Heavy Flannel Shirt
+ 53+  936D 53 54 52     			db	"STR"			; Straw Bale (Shielding)
+ 54+  9370 54 41 52     			db	"TAR"			; Canvas Tarpaulin
+ 55+  9373 48 49 44     			db	"HID"			; Cured Animal Hide
+ 56+  9376 57 41 44     			db	"WAD"			; Rubber Waders
+ 57+  9379 42 41 53     			db	"BAS"			; Woven Wicker Basket
+ 58+  937C 42 41 52     			db	"BAR"			; Tree Bark Bracers
+ 59+  937F 46 45 4E     			db	"FEN"			; Wooden Fence Picket
+ 60+  9382 4D 45 54     			db	"MET"			; Shield Metal Scrap
+ 61+  9385 42 55 43     			db	"BUC"			; Steel Bucket (Helmet)
+ 62+  9388 54 49 52     			db	"TIR"			; Tractor Tire Rubber
+ 63+  938B 42 41 52     			db	"BAR"			; Large Plastic Barrel
+ 64+  938E 4C 49 44     			db	"LID"			; Steel Dustbin Lid
+ 65+  9391 47 52 41     			db	"GRA"			; Heavy Iron Grate
+ 66+  9394
+ 67+  9394              ;------ doors & passages --------
+ 68+  9394 00 00 00...  doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
+ 69+  93B4 00 00 00...  passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
+ 70+  93D4 00           door_nr		db	0				; numer drzwi na ktore patrzy Hero
+ 71+  93D5
+ 72+  93D5              ; ------ game flags -----------
+ 73+  93D5 00           message_flag	db	0
+ 74+  93D6 00           game_flags	db	0
+ 75+  93D7 00 00        flash_adr	dw	$0000			; adres migajacego char'a w pamieci atrybutow
+ 76+  93D9
+# file closed: vars.dat
+576   93D9              		include	data/messages.dat
+# file opened: messages.dat
+  1+  93D9              ; ---------------------------------
+  2+  93D9              ; nacisniecie klawisza
+  3+  93D9              ; ---------------------------------
+  4+  93D9 73 65 61 72  msg_searching	db	"searching ...$"
+  4+  93DD 63 68 69 6E
+  4+  93E1 67 20 2E 2E
+  4+  93E5 2E 24
+  5+  93E7 4E 6F 74 68  msg_nothing		db	"Nothing special$"
+  5+  93EB 69 6E 67 20
+  5+  93EF 73 70 65 63
+  5+  93F3 69 61 6C 24
+  6+  93F7 50 61 73 73  msg_psgfinded	db	"Passage Found!$"
+  6+  93FB 61 67 65 20
+  6+  93FF 46 6F 75 6E
+  6+  9403 64 21 24
+  7+  9406 44 6F 6F 72  msg_door		db	"Door num "
+  7+  940A 20 6E 75 6D
+  7+  940E 20
+  8+  940F 00 00 24     msg_door_nr		db	0, 0, "$"
+  9+  9412 4E 6F 20 64  msg_nodoor		db	"No door here.$"
+  9+  9416 6F 6F 72 20
+  9+  941A 68 65 72 65
+  9+  941E 2E 24
+ 10+  9420 4E 65 65 64  msg_nokey		db	"Need a Key!$"
+ 10+  9424 20 61 20 4B
+ 10+  9428 65 79 21 24
+ 11+  942C 4B 65 79 20  msg_key			db	"Key Found!$"
+ 11+  9430 46 6F 75 6E
+ 11+  9434 64 21 24
+ 12+  9437 57 65 61 70  msg_weapon		db	"Weapon Found!$"
+ 12+  943B 6F 6E 20 46
+ 12+  943F 6F 75 6E 64
+ 12+  9443 21 24
+ 13+  9445 41 72 6D 6F  msg_armour		db	"Armour Found!$"
+ 13+  9449 75 72 20 46
+ 13+  944D 6F 75 6E 64
+ 13+  9451 21 24
+ 14+  9453 4F 6E 20 54  msg_floor		db	"On The Floor:$"
+ 14+  9457 68 65 20 46
+ 14+  945B 6C 6F 6F 72
+ 14+  945F 3A 24
+ 15+  9461 44 75 73 74  msg_dust		db	"Dust and Lint$"
+ 15+  9465 20 61 6E 64
+ 15+  9469 20 4C 69 6E
+ 15+  946D 74 24
+ 16+  946F 48 6D 6D 2E  msg_figure1		db	"Hmm.. I saw him$"
+ 16+  9473 2E 20 49 20
+ 16+  9477 73 61 77 20
+ 16+  947B 68 69 6D 24
+ 17+  947F 73 6F 6D 65  msg_figure2		db	"somewhere$"
+ 17+  9483 77 68 65 72
+ 17+  9487 65 24
+ 18+  9489 74 68 65 20  msg_teleport	db	"the end$"
+ 18+  948D 65 6E 64 24
+ 19+  9491
+# file closed: messages.dat
+577   9491              		include data/map.dat
+# file opened: map.dat
+  1+  9491              MAP:
+  2+  9491 23 23 23 23  	db	'################################'
+  2+  9495 23 23 23 23
+  2+  9499 23 23 23 23
+  2+  949D 23 23 23 23
+  2+  94A1 23 23 23 23
+  2+  94A5 23 23 23 23
+  2+  94A9 23 23 23 23
+  2+  94AD 23 23 23 23
+  3+  94B1 23 20 20 3D  	db	'#  = + # #   #  ####(# +   #   #'
+  3+  94B5 20 2B 20 23
+  3+  94B9 20 23 20 20
+  3+  94BD 20 23 20 20
+  3+  94C1 23 23 23 23
+  3+  94C5 28 23 20 2B
+  3+  94C9 20 20 20 23
+  3+  94CD 20 20 20 23
+  4+  94D1 23 20 20 23  	db	'#  ### #   # #  == #+# #   + # #'
+  4+  94D5 23 23 20 23
+  4+  94D9 20 20 20 23
+  4+  94DD 20 23 20 20
+  4+  94E1 3D 3D 20 23
+  4+  94E5 2B 23 20 23
+  4+  94E9 20 20 20 2B
+  4+  94ED 20 23 20 23
+  5+  94F1 23 23 23 23  	db	'#####  ### ###/### # # #########'
+  5+  94F5 23 20 20 23
+  5+  94F9 23 23 20 23
+  5+  94FD 23 23 2F 23
+  5+  9501 23 23 20 23
+  5+  9505 20 23 20 23
+  5+  9509 23 23 23 23
+  5+  950D 23 23 23 23
+  6+  9511 23 7E 23 20  	db	'#~# #+###### # #   # #         #'
+  6+  9515 23 2B 23 23
+  6+  9519 23 23 23 23
+  6+  951D 20 23 20 23
+  6+  9521 20 20 20 23
+  6+  9525 20 23 20 20
+  6+  9529 20 20 20 20
+  6+  952D 20 20 20 23
+  7+  9531 23 3D 23 20  	db	'#=# + #~   ###+## ## #+##  ###+#'
+  7+  9535 2B 20 23 7E
+  7+  9539 20 20 20 23
+  7+  953D 23 23 2B 23
+  7+  9541 23 20 23 23
+  7+  9545 20 23 2B 23
+  7+  9549 23 20 20 23
+  7+  954D 23 23 2B 23
+  8+  9551 23 20 20 20  	db	'#   # =  # +   #     # ##    #(#'
+  8+  9555 23 20 3D 20
+  8+  9559 20 23 20 2B
+  8+  955D 20 20 20 23
+  8+  9561 20 20 20 20
+  8+  9565 20 23 20 23
+  8+  9569 23 20 20 20
+  8+  956D 20 23 28 23
+  9+  9571 23 3D 23 23  	db	'#=######=#######################'
+  9+  9575 23 23 23 23
+  9+  9579 3D 23 23 23
+  9+  957D 23 23 23 23
+  9+  9581 23 23 23 23
+  9+  9585 23 23 23 23
+  9+  9589 23 23 23 23
+  9+  958D 23 23 23 23
+ 10+  9591 23 20 20 23  	db	'#  #P#[  #      #=#    #       #'
+ 10+  9595 50 23 5B 20
+ 10+  9599 20 23 20 20
+ 10+  959D 20 20 20 20
+ 10+  95A1 23 3D 23 20
+ 10+  95A5 20 20 20 23
+ 10+  95A9 20 20 20 20
+ 10+  95AD 20 20 20 23
+ 11+  95B1 23 20 20 23  	db	'#  #&#########  +   ## ##+#+#=##'
+ 11+  95B5 26 23 23 23
+ 11+  95B9 23 23 23 23
+ 11+  95BD 23 23 20 20
+ 11+  95C1 2B 20 20 20
+ 11+  95C5 23 23 20 23
+ 11+  95C9 23 2B 23 2B
+ 11+  95CD 23 3D 23 23
+ 12+  95D1 23 20 20 20  	db	'#      #        ###       # #  #'
+ 12+  95D5 20 20 20 23
+ 12+  95D9 20 20 20 20
+ 12+  95DD 20 20 20 20
+ 12+  95E1 23 23 23 20
+ 12+  95E5 20 20 20 20
+ 12+  95E9 20 20 23 20
+ 12+  95ED 23 20 20 23
+ 13+  95F1 23 23 23 23  	db	'################################'
+ 13+  95F5 23 23 23 23
+ 13+  95F9 23 23 23 23
+ 13+  95FD 23 23 23 23
+ 13+  9601 23 23 23 23
+ 13+  9605 23 23 23 23
+ 13+  9609 23 23 23 23
+ 13+  960D 23 23 23 23
+ 14+  9611
+ 15+  9611              ; ----------------------------------------------------------
+ 16+  9611              ; search_key przeszukuje mape liczac kolejne klucze
+ 17+  9611              ; Jesli znjdzie klucz przypisuje mu nr klucza wg tej tabeli
+ 18+  9611              ; ----------------------------------------------------------
+ 19+  9611              key_door_nr:
+ 20+  9611 0B           	db	11	;00
+ 21+  9612 07           	db	7	;01
+ 22+  9613              weapon_pow:
+ 23+  9613 01           	db	1
+ 24+  9614 02           	db	2
+ 25+  9615              armour_pow:
+ 26+  9615 01           	db	1
+ 27+  9616
+ 28+  9616
+# file closed: map.dat
+578   9616
+579   9616              ;==================
+580   9616
+581   9616              End:
+582   9616
+583   9616                  ; drugi blok (CODE) na tasme
+584   9616                  SAVETAP "dng.tap", CODE, "Dungeology", Start, End - Start
+585   9616
+# file closed: dung.asm

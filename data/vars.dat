@@ -2,8 +2,6 @@
 
 map	Map	{ 32, 12, $0000 }
 
-message_flag	db	0		; jesli 0 nie ma czyszczenia ekranu powiadomien
-
 ;------ hero ----------
 hero			Character	{
 				2, 2, 1, $00,				; pozycja i offset 
@@ -70,3 +68,9 @@ armour_names:
 doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
 passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
 door_nr		db	0				; numer drzwi na ktore patrzy Hero
+
+; ------ game flags -----------
+message_flag	db	0
+game_flags	db	0
+flash_adr	dw	$0000			; adres migajacego char'a w pamieci atrybutow
+

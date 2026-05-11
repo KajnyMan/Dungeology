@@ -138,29 +138,67 @@ _same_third:
 		ret
 
 ; ==================================================================
+;	Ustawia miganie char'a
+;	IN:	DE - adres chara w pamieci ekranu	
+; ==================================================================
+flash_portal:
+		ld	a,d					; restore DE
+		sub	8					;
+		ld	d,a					; ----------
+
+		call	scr_to_atr
+		ex	de,hl
+		ld	(hl),PORTAL_ATR	
+		ld	(flash_adr),hl
+		ld	a,(game_flags)
+		or	a,%10000000
+		ld	(game_flags),a
+		jp	_printout	
+; ==================================================================	
+;	Zamienia adres pamieci ekranu na adres atrybutu
+;	IN:	DE	- adres pamieci ekranu
+;	OUT:	DE	- adres atrybutu
+; ==================================================================	
+scr_to_atr:
+		ld	a,d
+		cp	$48
+		jr	c,_1_third
+		jr	z,_2_third
+		add	a,$0A
+		jr	_done
+_1_third
+		add	a,$18
+		jr	_done
+_2_third
+		add	a,$11
+_done
+		ld	d,a
+		ret
+
+; ==================================================================
 ;	Ustawia atrybuty dla 'znaku' na ekranie
 ;	IN:	A - atrybut
 ;		DE - YX
 ; ==================================================================
-set_atr
-	push	af
-		ld	a,d
-		add	a,a
-		add	a,a
-		add	a,a
-		ld	l,a
-		ld	h,0
-		add	hl,hl
-		add hl,hl
-		ld	a,e
-		add	a,l
-		ld	l,a
-		ld	a,ATR_MSB	
-		add	a,h
-		ld	h,a
-	pop		af		
-		ld	(hl),a
-		ret
+;set_atr:
+;	push	af
+;		ld	a,d
+;		add	a,a
+;		add	a,a
+;		add	a,a
+;		ld	l,a
+;		ld	h,0
+;		add	hl,hl
+;		add hl,hl
+;		ld	a,e
+;		add	a,l
+;		ld	l,a
+;		ld	a,ATR_MSB	
+;		add	a,h
+;		ld	h,a
+;	pop		af		
+;		ld	(hl),a
+;		ret
 
 ; ==================================================================
 ;	Ustawia atrybuty dla lini na ekranie
@@ -186,7 +224,7 @@ set_atr_line
 		ld	a,ATR_MSB	
 		add	a,h
 		ld	h,a
-		ld	a,b
+;		ld	a,b
 		ld	b,c
 
 		pop		af		
@@ -279,17 +317,6 @@ message_area_clear:
 		ld	(message_flag),a
 		ret
 		
-; Sprawdza czy ruch jest mozliwy
-ismove:	
-		call	right_before
-		cp	WALL_CHAR
-		jp	z,key_press
-		cp	C_DOOR_CHAR		
-		jp	z,key_press
-		call	move
-		call	message_area_clear
-		jp	refresh
-
 ; ==========================================
 ; Druguje ramke okna
 ; IN:	BC - Y, X lewego gornego rogu ramki

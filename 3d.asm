@@ -16,7 +16,7 @@ print_weapon_3d:
 print_armour_3d:
 		ld	hl,armour_sprites
 
-_common:
+_common
 		ld	a,(main_counter)
 		dec	a
 		add	a,a
@@ -27,12 +27,13 @@ _common:
 		inc	hl
 		ld	d,(hl)			; iterator DE na Sprite 
 
+_direct
 		ld	a,(de)
 		or	a				; jesli zero to nie ma sprite'a
 		jp	z,_printout		; w tej pozycji, a wiec wypad
 		ld	b,a				; licznik lini ustawiony
 		inc	de				; iterator na Y 
-_nxt:
+_nxt
 		push	bc			; SAVE licznik
 		ld	a,(de)
 		ld	b,a
@@ -61,9 +62,11 @@ _nxt:
 
 print_figure_3d:
 		ld	a,(main_counter)
-		cp	4					; stwor prze Hero
+		cp	4					; stwor przed Hero
 		jp	nz,_printout		
-		ld	hl,figure_sprites
-		jp	_common	
 
+		ld	de,f04
+		jr	_direct	
+		
+		include figure.asm
 		include data/sprites.dat

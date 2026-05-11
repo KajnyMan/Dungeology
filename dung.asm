@@ -39,21 +39,24 @@ refresh:
 		call	clear_txtlines
 _begin
 		; "wygaszone" okno 3D przy rysowaniu
-		ld	a,BLACK_BGD OR BLACK
+		ld	a,OFF_ATR
 		ld	b,W3D_HEIGHT
 		ld	c,W3D_WIDTH
 		ld	de, W3D_YX
 		call set_atr_block
 
+		call	check_flags
+
 		; -----------------------
 		; Pole widzenia na ekran
 		; -----------------------
+
 		call	field_of_view		; fov.z80
 
 		; -----------------------
 		;  "widzialnosc" okna 3D
 		; -----------------------
-		ld	a,BLACK_BGD OR BLUE OR BRIGHT
+		ld	a,W3D_ATR
 		ld	b,W3D_HEIGHT
 		ld	c,W3D_WIDTH
 		ld	de, W3D_YX
@@ -79,7 +82,8 @@ _begin
 		
 		ld	a, HERO_ATR
 		ld	de,HERO_YX
-		call	set_atr
+		ld	c,1					; jeden znak
+		call	set_atr_line
 
 wait_release:
 		call	scan_keyboard	
@@ -92,17 +96,22 @@ key_press:
 		cp	0
 		jp	z,key_press
 		cp	1
-		jp	z,ismove	; bit 0: I
+		jp	z,move			; bit 0: I
 		cp	2
-		jr	z,trn_r		; bit 1: L
+		jr	z,trn_r			; bit 1: L
 		cp	4
-		jp	z,move_door	; bit 2: K
+		jp	z,move_door		; bit 2: K
 		cp	8
-		jp	z,trn_l		; bit 3: J
+		jp	z,trn_l			; bit 3: J
 		cp	16
-		jp	z,search	; bit 4: S
+		jp	z,search		; bit 4: S
 		cp	32
-		jp	z,take_item	; bit 5: T
+		jp	z,take_item		; bit 5: T
+		cp	64
+		jp	z,talk_figure	; bit 6: C
+		cp	128
+		jp	z,teleport		; bit 7: P
+
 
 		jr	key_press
 
@@ -134,7 +143,8 @@ move_door:
 		jr	z,_print_door_nr
 		cp	O_DOOR_CHAR	
 		jr	z,_print_door_nr
-		jp	key_press			; nie ma tutaj drzwi! Wypad
+		PRINT_STR	MSG_LINE1 + 2, msg_nodoor
+		jp	wait_release			; nie ma tutaj drzwi! Wypad
 _print_door_nr
 		push	hl				; save adresu drzwi
 		call	room_label
@@ -158,11 +168,21 @@ close_door:
 		call	remove_key
 		jp	refresh
 
+
 ;-------------------------------------------------
 ; Zmienia pozycje Hero
 ; IN: DE - nowa pozycja ( offset wzgl. MAP )
 ;-------------------------------------------------
 move:
+		call	right_before
+
+		cp	WALL_CHAR
+		jp	z,key_press
+		cp	C_DOOR_CHAR		
+		jp	z,key_press
+		cp	FIGURE_CHAR
+		jp	z,key_press
+
 		ld	(hero.offset),de	; Hero new offset
 		ld	hl,hero_s	; /
 		ld	a,(hero.direction)	; Przesuniecie kursora
@@ -177,7 +197,9 @@ move:
 		ld	a,(hero.mapX)
 		add	a,(hl)
 		ld	(hero.mapY),a	; \____________
-		ret
+
+		call	message_area_clear
+		jp	refresh
 
 ;-----------------------------------------
 ; Funkja wypluwa:
@@ -206,10 +228,15 @@ _addit	ld	hl,(hero.offset)
 ; Szuka ukrytych przejsc itp.
 ;--------------------------------------------
 search:
-	;	call	message_area_clear
+		call	message_area_clear
 		PRINT_STR	MSG_LINE1 + 2, msg_searching
 		call 	right_before
-
+		cp	FIGURE_CHAR
+		jr	nz,_no_figure
+		PRINT_STR	MSG_LINE1 + 1, msg_figure1
+		PRINT_STR	MSG_LINE2 + 4, msg_figure2
+		jp	wait_release
+_no_figure
 		push	hl					; save adres char przed Hero
 
 		; ukryte przejscie ?
@@ -402,6 +429,20 @@ room_label:
 		ld	(hl),b
 		ret
 		
+; ------------------------
+; Sprawdza flagi
+; ------------------------
+check_flags:
+		ld	a,(game_flags)
+		and	%10000000	
+		jr	z,_clr_flags
+		and	%01111111
+		ld	(game_flags),a
+		ld	hl,(flash_adr)
+		ld	(hl),FOV_ATR
+_clr_flags
+		ret
+		
 ;------------------------------------------------------------------
 ; szuka 16-bitowego offsetu na liscie objektow 
 ; IN:	DE - offset do wyszukania
@@ -511,6 +552,11 @@ _p_info
 		jr	nz,_p_info
 		ret
 		
+;---------------------------------------------	
+; Teleport
+;---------------------------------------------	
+teleport:
+		PRINT_STR	MSG_LINE1 + 4, msg_teleport	
 ;------------------------	
 ; Wyjscie
 ;------------------------

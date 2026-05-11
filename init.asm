@@ -8,42 +8,42 @@
 		call	print_frames
 
 		; kolory okna powiadomien
-		ld	a,BLACK_BGD OR WHITE 
+		ld	a,MSG_ATR
 		ld	b,MSG_HEIGHT
 		ld	c,MSG_WIDTH
 		ld	de,MSG_YX
 		call set_atr_block
 
 		; kolory ramki mapy
-		ld	a,BLACK_BGD OR GREEN 
+		ld	a,FOV_FRAME_ATR	
 		ld	b,FOV_FRAME_H
 		ld	c,FOV_FRAME_W
 		ld	de,FOV_FRAME_YX
 		call set_atr_block
 
 ;		; kolory ramki	3D 
-		ld	a,BLACK_BGD OR PURPLE 
+		ld	a,W3D_FRAME_ATR	
 		ld	b,W3D_FRAME_H
 		ld	c,W3D_FRAME_W
 		ld	de,W3D_FRAME_YX
 		call set_atr_block
 
 		; kolory okna mapy
-		ld	a,BLACK_BGD OR RED 
+		ld	a,FOV_ATR
 		ld	b,FOV_HEIGHT
 		ld	c,FOV_WIDTH
 		ld	de,FOV_YX
 		call set_atr_block
 
 		; kolory okna statystyk
-		ld	a,BLACK_BGD OR YELLOW 
+		ld	a,STS_ATR
 		ld	b,STS_HEIGHT
 		ld	c,STS_WIDTH
 		ld	de,STS_YX
 		call set_atr_block
 		
 		; kolory okna przedmiotow
-		ld	a,BLACK_BGD OR CYAN 
+		ld	a,ITM_ATR
 		ld	b,ITM_HEIGHT
 		ld	c,ITM_WIDTH
 		ld	de,ITM_YX

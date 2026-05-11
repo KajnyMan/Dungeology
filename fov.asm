@@ -116,8 +116,13 @@ _vsbl:
 		ld	b,a					; Save Tile char
 		call	pchar
 
-		; Print 3D
 		ld	a,b					; Restore Tile.char
+
+		; ustawia miganie tam gdzie ma byc
+		cp	PORTAL_CHAR
+		jp	z,flash_portal
+
+_print3d
 		cp	WALL_CHAR
 		jp	z,printwall_3d		; Sprite na ekran
 
@@ -136,7 +141,7 @@ _vsbl:
 		cp	ARMOUR_CHAR	
 		jp	z,print_armour_3d
 		
-		cp	MONSTER_CHAR
+		cp	FIGURE_CHAR
 		jp	z,print_figure_3d
 _printout:
 		pop	bc
