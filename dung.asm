@@ -100,20 +100,32 @@ key_press:
 		cp	2
 		jr	z,trn_r			; bit 1: L
 		cp	4
-		jp	z,move_door		; bit 2: K
+		jp	z,look_down		; bit 2: K
 		cp	8
 		jp	z,trn_l			; bit 3: J
 		cp	16
-		jp	z,search		; bit 4: S
+		jp	z,look_ahead	; bit 4: O
 		cp	32
-		jp	z,take_item		; bit 5: T
-		cp	64
-		jp	z,talk_figure	; bit 6: C
-		cp	128
-		jp	z,teleport		; bit 7: P
+		jp	z,talk_figure	; bit 5: U
 
 
 		jr	key_press
+; -------------------------
+look_ahead:
+		call	message_area_clear
+		call	right_before
+		cp	C_DOOR_CHAR	
+		jp	z,move_door
+
+		cp	O_DOOR_CHAR	
+		jp	z,move_door
+
+		cp	FIGURE_CHAR
+		jp	nz,search
+
+		PRINT_STR	MSG_LINE1 + 1, msg_figure1
+		PRINT_STR	MSG_LINE2 + 4, msg_figure2
+		jp	wait_release
 
 ; -------------------------
 trn_r:
@@ -137,15 +149,6 @@ trn_l:
 
 ; otwiera lub zamyka drzwi
 move_door:
-		call	message_area_clear
-		call	right_before
-		cp	C_DOOR_CHAR	
-		jr	z,_print_door_nr
-		cp	O_DOOR_CHAR	
-		jr	z,_print_door_nr
-		PRINT_STR	MSG_LINE1 + 2, msg_nodoor
-		jp	wait_release			; nie ma tutaj drzwi! Wypad
-_print_door_nr
 		push	hl				; save adresu drzwi
 		call	room_label
 		PRINT_STR	MSG_LINE1 + 3, msg_door
@@ -228,15 +231,8 @@ _addit	ld	hl,(hero.offset)
 ; Szuka ukrytych przejsc itp.
 ;--------------------------------------------
 search:
-		call	message_area_clear
-		PRINT_STR	MSG_LINE1 + 2, msg_searching
-		call 	right_before
-		cp	FIGURE_CHAR
-		jr	nz,_no_figure
-		PRINT_STR	MSG_LINE1 + 1, msg_figure1
-		PRINT_STR	MSG_LINE2 + 4, msg_figure2
-		jp	wait_release
-_no_figure
+	;	call	message_area_clear
+	;	PRINT_STR	MSG_LINE1 + 2, msg_searching
 		push	hl					; save adres char przed Hero
 
 		; ukryte przejscie ?
@@ -262,9 +258,9 @@ _nothing_here
 		jp	wait_release
 
 ; ----------------------------------------------------
-; Jak cos jest pod nogami wsadza do plecaka 
+; W zaleznosci od tego co pod nogami deleguje akcje
 ; ----------------------------------------------------
-take_item:
+look_down:
 		call	message_area_clear
 		PRINT_STR	MSG_LINE1 + 2, msg_floor
 		call	search_floor
@@ -275,6 +271,8 @@ take_item:
 		jp	z,take_weapon
 		cp	ARMOUR_CHAR
 		jp	z,take_armour
+		cp	PORTAL_CHAR
+		jp	z,teleport
 
 		; jesli nic nie ma to komunikat ze nic nie ma
 		PRINT_STR	MSG_LINE2 + 2, msg_dust
