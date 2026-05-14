@@ -65,8 +65,9 @@ armour_names:
 			db	"GRA"			; Heavy Iron Grate
 
 ;------ doors & passages --------
-doors		ds	OBJ_MAX * 2		; max doors: ofs lsb, msb
-passages	ds	OBJ_MAX * 2		; max passages: ofs lsb, msb
+doors		ds	OBJ_MAX * 2		; drzwi: ofs lsb, msb
+passages	ds	OBJ_MAX * 2		; ukryte przejscia
+m_walls		ds	OBJ_MAX * 2		; przesuwane sciany 
 door_nr		db	0				; numer drzwi na ktore patrzy Hero
 
 ; ------ game flags -----------

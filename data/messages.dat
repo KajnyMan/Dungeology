@@ -16,4 +16,6 @@ msg_dust		db	"Dust and Lint$"
 msg_figure1		db	"Hmm.. I saw him$"
 msg_figure2		db	"somewhere$"
 msg_teleport	db	"the end$"
+msg_no_way		db	"no way!$"
+msg_mwall		db	"Moved!$"
 

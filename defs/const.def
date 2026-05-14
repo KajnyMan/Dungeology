@@ -86,6 +86,7 @@ ITM_HEIGHT		equ	3
 STS_YX			equ	( STS_Y * 256 ) + STS_X 
 ITM_YX			equ	( ITM_Y * 256 ) + ITM_X 
 WALL_CHAR		equ	'#'
+M_WALL_CHAR		equ	'M'
 PREV_WALL		equ	'.'
 FLOOR_CHAR		equ	' '
 C_DOOR_CHAR		equ	'+'
@@ -98,7 +99,8 @@ PASSAGE_CHAR	equ	'='
 PORTAL_CHAR		equ	'P'
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
-DELIM			equ	0FFh
+DELIM			equ	$FF
+NONE			equ	$FF
 OBJ_MAX			equ	16
 HERO_Y			equ	FOV_Y + 4
 HERO_X			equ FOV_X + 4 	

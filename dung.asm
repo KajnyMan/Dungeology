@@ -98,7 +98,7 @@ key_press:
 		cp	1
 		jp	z,move			; bit 0: I
 		cp	2
-		jr	z,trn_r			; bit 1: L
+		jp	z,trn_r			; bit 1: L
 		cp	4
 		jp	z,look_down		; bit 2: K
 		cp	8
@@ -106,11 +106,37 @@ key_press:
 		cp	16
 		jp	z,look_ahead	; bit 4: O
 		cp	32
-		jp	z,talk_figure	; bit 5: U
+		jp	z,push_it		; bit 5: U
 
 
 		jr	key_press
-; -------------------------
+; ----------------------------------------------------
+; W zaleznosci od tego co pod nogami deleguje akcje
+; ----------------------------------------------------
+look_down:
+		call	message_area_clear
+		PRINT_STR	MSG_LINE1 + 2, msg_floor
+		call	search_floor
+		ld	a,c
+		cp	KEY_CHAR
+		jp	z,take_key
+
+		cp	WEAPON_CHAR
+		jp	z,take_weapon
+
+		cp	ARMOUR_CHAR
+		jp	z,take_armour
+
+		cp	PORTAL_CHAR
+		jp	z,teleport
+
+		; jesli nic nie ma
+		PRINT_STR	MSG_LINE2 + 2, msg_dust
+		jp wait_release	
+
+; ----------------------------------------------------
+; W zaleznosci od tego co przed oczami deleguje akcje
+; ----------------------------------------------------
 look_ahead:
 		call	message_area_clear
 		call	right_before
@@ -127,6 +153,49 @@ look_ahead:
 		PRINT_STR	MSG_LINE2 + 4, msg_figure2
 		jp	wait_release
 
+; ----------------------------------------------------
+; W zaleznosci od tego co przed oczami deleguje akcje
+; ----------------------------------------------------
+push_it:
+		call	message_area_clear
+		call	right_before
+
+		cp	FIGURE_CHAR
+		jp	z,talk_figure
+
+		call	right_before
+		push	hl					; SAVE tile adres	
+		ld	hl,m_walls
+		call	check_offset16	
+		push	hl
+		pop		ix					; msb wskaznika z listy m_walls
+
+		pop		hl					; RESTORE tile adres
+		
+		cp	NONE
+		jp	z,_no_move
+
+		ld	bc,(hero.offset)		; SAVE hero offset		
+		ld	(hero.offset),de		; offset sciany jako hero
+		exx
+		call	right_before
+		cp	FLOOR_CHAR
+		jr	nz,_no_space
+		ld	(hl),WALL_CHAR
+		ld	(ix),d
+		ld	(ix-1),e
+		exx
+		ld	(hl),FLOOR_CHAR
+		ld	(hero.offset),bc		; RESTORE hero offset
+		PRINT_STR	MSG_LINE2 + 6, msg_mwall
+		jp	refresh
+_no_space
+		exx
+		ld	(hero.offset),bc		; RESTORE hero offset
+_no_move
+		PRINT_STR	MSG_LINE1 + 5, msg_no_way	
+		jp	wait_release
+		
 ; -------------------------
 trn_r:
 		call	message_area_clear
@@ -170,7 +239,6 @@ close_door:
 		ld	a,(door_nr)
 		call	remove_key
 		jp	refresh
-
 
 ;-------------------------------------------------
 ; Zmienia pozycje Hero
@@ -231,16 +299,17 @@ _addit	ld	hl,(hero.offset)
 ; Szuka ukrytych przejsc itp.
 ;--------------------------------------------
 search:
-	;	call	message_area_clear
-	;	PRINT_STR	MSG_LINE1 + 2, msg_searching
-		push	hl					; save adres char przed Hero
+		push	hl					; SAVE adres char przed Hero
+		exx
+		PRINT_STR	MSG_LINE1 + 2, msg_searching
+		exx
 
 		; ukryte przejscie ?
 		ld	b,OBJ_MAX
 		ld	hl,passages
 		call	check_offset16		; w HL msb offsety znalezionego objektu
 
-		pop		de					; restore
+		pop		de					; RESTORE adres
 
 		cp	0FFh					; a moze nic tu nie ma?
 		jp	z,_nothing_here	
@@ -256,27 +325,6 @@ search:
 _nothing_here
 		PRINT_STR	MSG_LINE2 + 1, msg_nothing
 		jp	wait_release
-
-; ----------------------------------------------------
-; W zaleznosci od tego co pod nogami deleguje akcje
-; ----------------------------------------------------
-look_down:
-		call	message_area_clear
-		PRINT_STR	MSG_LINE1 + 2, msg_floor
-		call	search_floor
-		ld	a,c
-		cp	KEY_CHAR
-		jp	z,take_key
-		cp	WEAPON_CHAR
-		jp	z,take_weapon
-		cp	ARMOUR_CHAR
-		jp	z,take_armour
-		cp	PORTAL_CHAR
-		jp	z,teleport
-
-		; jesli nic nie ma to komunikat ze nic nie ma
-		PRINT_STR	MSG_LINE2 + 2, msg_dust
-		jp wait_release	
 
 ; ----------------------------------------------------
 ; Sprawdza co lezy pod nogami.
@@ -444,9 +492,10 @@ _clr_flags
 ;------------------------------------------------------------------
 ; szuka 16-bitowego offsetu na liscie objektow 
 ; IN:	DE - offset do wyszukania
-; 	HL - adres listy offsetow objektow ( H - msb )
+;	 	HL - adres listy offsetow objektow ( H - msb )
 ; OUT:	A  - jesli FFh = nie znaleziony offset
 ;	, w przeciwnym razie index znalezionego objektu na liscie ( od 0 )
+;		HL - msb offsetu na liscie offsetow
 ; USED:	A, C, HL
 ;------------------------------------------------------------------
 check_offset16:

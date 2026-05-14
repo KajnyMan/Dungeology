@@ -60,16 +60,36 @@
 		ld	ix,doors
 		ld	iy,passages
 		ld	hl,MAP
-		ld	de,0				; offset obiektow
+		ld	de,0				; offset obiektow w bajtach
 		ld	bc,(map.size)
+		exx
+		ld	hl,m_walls
+		exx
 _next_mapchar:
 		ld	a,(hl)
 		cp	C_DOOR_CHAR	
 		jr	z,_init_door
+
 		cp	O_DOOR_CHAR	
 		jr	z,_init_door
+
+		cp	M_WALL_CHAR
+		jr	nz,_maybe_psg
+
+		; --- przesuwane sciany ---	
+		push	de
+		exx	
+		pop		de
+		ld	(hl),e
+		inc	hl
+		ld	(hl),d
+		inc	hl
+		exx
+		ld	(hl),WALL_CHAR
+_maybe_psg
 		cp	PASSAGE_CHAR
 		jr	nz,_inc_counters
+
 		; --- ukryte przejscia ----
 		ld	(iy),e
 		ld	(iy+1),d
@@ -113,10 +133,106 @@ _inc_counters:
 		neg
 		ld	(ix),a
 		
-; Oblicza i wypelnia tabele fov_offsets
+; -------------------------------------------------------
+; Oblicza i wypelnia wynikami tabele offsetow
+; potencjalnie widzialnych Tiles - fov_offsets 
 ; W zaleznosci od kierunku patrzenia kazde tile w polu widzenia
 ; dostanie swoj offset wzgledem Hero
-		call	calc_fov	
+; -------------------------------------------------------
+calc_fov:
+		; --- EAST & NORTH --- 
+		ld	iy,fov_n + 4	
+		ld	ix,fov_e + 4
+		ld	b,4			; glebokosc fov
+		ld	d,0
+		ld	e,10			; offset adresu od 5 do 2
+		ld	a,(map.width)
+		ld	c,a
+_nxtrow:
+		add	a,b
+		ld	(ix+2),a	
+		ld	a,b
+		sub	c
+		ld	(ix-2),a
+		ld	(ix-1),0FFh
+		ld	(ix),b
+
+		call	mul8
+		ld	a,h
+		cpl
+		ld	h,a
+		ld	a,l
+		cpl
+		ld	l,a
+		ld	(iy-2),l
+		ld	(iy-1),h
+		inc	hl
+
+		ld	(iy),l
+		ld	(iy+1),h
+		inc	hl
+		ld	(iy+2),l
+		ld	(iy+3),h
+
+		ld	a,b
+		cp	3
+		jr	c,_ommit1
+		ld	a,(ix+2)
+		add	a,c
+		ld	(ix+4),a
+		ld	a,(ix-2)
+		sub	c
+		ld	(ix-4),a
+		ld	(ix-3),0FFh
+
+		ld	l,(iy-2)
+		ld	h,(iy-1)
+		dec	hl	
+		ld	(iy-4),l
+		ld	(iy-3),h
+		ld	l,(iy+2)
+		ld	h,(iy+3)
+		inc	hl	
+		ld	(iy+4),l
+		ld	(iy+5),h
+_ommit1:
+		add	ix,de
+		add	iy,de
+		dec	e	
+		dec	e	
+		ld	a,c
+		djnz	_nxtrow
+
+		ld	(ix+2),a
+		neg
+		ld	(ix),a
+		ld	(ix+1),0FFh
+		ld	(iy),-1
+		ld	(iy+1),0FFh
+		ld	(iy+2),1
+		;--- WEST & SOUTH ---
+		ld	hl,fov_n
+		ld	de,fov_s
+		ld	b,36
+_nxt1:	push	bc
+		ld	a,(hl)	
+		cpl
+		ld	c,a	
+		inc	hl
+		ld	a,(hl)
+		cpl
+		ld	b,a
+		inc	bc
+		ld	a,c
+		ld	(de),a
+		inc	de
+		ld	a,b
+		ld	(de),a
+		inc	hl
+		inc	de
+		pop	bc
+		djnz	_nxt1
+
 ; Wbija biezace statystyki hero do stringow stat_info
 		call	update_info_strings
 		call	print_info
