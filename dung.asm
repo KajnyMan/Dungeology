@@ -20,6 +20,14 @@ Start:
 ; ================
 CodeStart:
 		di
+		ex	af,af'
+		exx
+		push	af
+		push	bc
+		push	de
+		push	hl
+		exx
+		ex	af,af'
 		
 		include	init.asm
 		
@@ -61,7 +69,6 @@ _begin
 		ld	c,W3D_WIDTH
 		ld	de, W3D_YX
 		call set_atr_block
-;		atrbuf_2_atr
 		
 		; --------------	
 		; Hero na ekran	
@@ -610,6 +617,15 @@ teleport:
 ; Wyjscie
 ;------------------------
 _halt:
+		ex		af,af'
+		exx
+		pop		hl
+		pop		de
+		pop		bc
+		pop		af
+		exx
+		ex		af,af'
+		
 		ei
 		ret
 
