@@ -28,12 +28,12 @@ CodeStart:
 		push	hl
 		exx
 		ex	af,af'
-		
+;_init
 		include	init.asm
 		
 ; ===============  M A I N    L O O P =================
 
-		jp	_begin
+;		jp	_begin
 
 refresh:
 		; czyszczenie okna fov
@@ -170,6 +170,7 @@ push_it:
 		cp	FIGURE_CHAR
 		jp	z,talk_figure
 
+		; jesli nie postac
 		call	right_before
 		push	hl					; SAVE tile adres	
 		ld	hl,m_walls
@@ -179,29 +180,42 @@ push_it:
 
 		pop		hl					; RESTORE tile adres
 		
+		; jesli nie sciana
 		cp	NONE
 		jp	z,_no_move
 
+		; jesli sciana sprawdza co za sciana
 		ld	bc,(hero.offset)		; SAVE hero offset		
 		ld	(hero.offset),de		; offset sciany jako hero
 		exx
 		call	right_before
+		; jesli za sciana pusto
 		cp	FLOOR_CHAR
-		jr	nz,_no_space
-		ld	(hl),WALL_CHAR
-		ld	(ix),d
-		ld	(ix-1),e
-		exx
-		ld	(hl),FLOOR_CHAR
-		ld	(hero.offset),bc		; RESTORE hero offset
-		PRINT_STR	MSG_LINE2 + 6, msg_mwall
-		jp	refresh
-_no_space
+		jr	z,_floor
+		; jesli za sciana zapadnia
+		cp	PIT_CHAR
+		jr	z,_trap
+
 		exx
 		ld	(hero.offset),bc		; RESTORE hero offset
 _no_move
 		PRINT_STR	MSG_LINE1 + 5, msg_no_way	
 		jp	wait_release
+_trap	ld	(hl),FLOOR_CHAR
+		ld	(ix),0
+		ld	(ix-1),0
+		PRINT_STR	MSG_LINE2, msg_pitfilled
+		jr	_common_ext
+_floor
+		ld	(hl),WALL_CHAR
+		ld	(ix),d
+		ld	(ix-1),e
+_common_ext
+		exx
+		ld	(hl),FLOOR_CHAR
+		ld	(hero.offset),bc		; RESTORE hero offset
+		PRINT_STR	MSG_LINE1 + 6, msg_mwall
+		jp	refresh
 		
 ; -------------------------
 trn_r:
@@ -260,6 +274,8 @@ move:
 		jp	z,key_press
 		cp	FIGURE_CHAR
 		jp	z,key_press
+		cp	PIT_CHAR
+		jp	z,abbys
 
 		ld	(hero.offset),de	; Hero new offset
 		ld	hl,hero_s	; /
@@ -606,6 +622,16 @@ _p_info
 		jr	nz,_p_info
 		ret
 		
+abbys:
+		PRINT_STR	MSG_LINE1,msg_pit	
+		PRINT_STR	MSG_LINE2,msg_restart	
+		ld	a,2
+		ld	(hero.mapY),a
+		ld	a,2
+		ld	(hero.mapX),a
+
+		jp	_restart
+
 ;---------------------------------------------	
 ; Teleport
 ;---------------------------------------------	

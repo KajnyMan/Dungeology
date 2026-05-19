@@ -113,6 +113,7 @@ _inc_counters:
 		or	c
 		jr	nz,_next_mapchar
 
+_restart
 ; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
 		ld	a,(hero.mapY)
 		ld	c,a

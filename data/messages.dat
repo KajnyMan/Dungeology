@@ -18,4 +18,7 @@ msg_figure2		db	"somewhere$"
 msg_teleport	db	"the end$"
 msg_no_way		db	"no way!$"
 msg_mwall		db	"Moved!$"
+msg_pitfilled	db	"The pit is sealed$"
+msg_pit			db	"You fell in a Pit$"
+msg_restart		db	"Back to start....$"
 

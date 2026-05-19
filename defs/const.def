@@ -96,6 +96,7 @@ WEAPON_CHAR		equ	'('
 ARMOUR_CHAR		equ	'['
 FIGURE_CHAR		equ	'&'
 PASSAGE_CHAR	equ	'='
+PIT_CHAR		equ	'.'
 PORTAL_CHAR		equ	'P'
 STRING_DELIM	equ	'$'
 TILE_EOL		equ $FF
