@@ -1,22 +1,31 @@
 printwall_3d:	
 		ld	hl,wall_sprites
+		ld	b,W3D_ATR
 		jr	_common
 print_c_door_3d:	
 		ld	hl,c_door_sprites
+		ld	b,W3D_ATR
 		jr	_common
 print_o_door_3d:	
 		ld	hl,o_door_sprites
+		ld	b,W3D_ATR
 		jr	_common
 print_key_3d:
 		ld	hl,key_sprites
+		ld	b,KEY_ATR
 		jr	_common
 print_weapon_3d:
 		ld	hl,weapon_sprites
+		ld	b,WEAPON_ATR
 		jr	_common
 print_armour_3d:
 		ld	hl,armour_sprites
+		ld	b,ARMOUR_ATR
 
 _common
+		ex	af,af'
+		ld	a,b
+		ex	af,af'
 		ld	a,(main_counter)
 		dec	a
 		add	a,a
@@ -66,6 +75,9 @@ print_figure_3d:
 		jp	nz,_printout		
 
 		ld	de,f04
+		ex	af,af'
+		ld	a,FIGURE_ATR
+		ex	af,af'
 		jr	_direct	
 		
 		include figure.asm

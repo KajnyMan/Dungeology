@@ -64,11 +64,12 @@ _begin
 		; -----------------------
 		;  "widzialnosc" okna 3D
 		; -----------------------
-		ld	a,W3D_ATR
-		ld	b,W3D_HEIGHT
-		ld	c,W3D_WIDTH
-		ld	de, W3D_YX
-		call set_atr_block
+		call	atr_buff_to_atr
+	;	ld	a,W3D_ATR
+	;	ld	b,W3D_HEIGHT
+	;	ld	c,W3D_WIDTH
+	;	ld	de, W3D_YX
+	; 	call set_atr_block
 		
 		; --------------	
 		; Hero na ekran	

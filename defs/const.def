@@ -41,6 +41,11 @@ ITM_ATR			equ BLACK_BGD OR CYAN
 OFF_ATR			equ BLACK_BGD OR BLACK
 
 PORTAL_ATR		equ BLACK_BGD OR YELLOW OR FLASH
+WEAPON_ATR		equ BLACK_BGD OR CYAN
+ARMOUR_ATR		equ BLACK_BGD OR YELLOW
+KEY_ATR			equ BLACK_BGD OR GREEN
+FIGURE_ATR		equ BLACK_BGD OR GREEN
+
 
 	; klawiatura
 CS_V			equ	$FE
@@ -116,26 +121,21 @@ WEST			equ	3
 FONTS			equ	$3D00	
 SCREEN			equ	$4000
 SCR2			equ	$4800
-SCREEN_TOP		equ	$5800
-SCREEN_ATR		equ	$5800
-ATR3			equ	$5A00
 MSG_AREA		equ $4888	; linie 96-127
 SCR3			equ	$5000
-ATR_MAP_TOP		equ	$5980
-ATR_MSG_TOP 	equ	$5A00
-ATR_3D_TOP		equ	$5B00
+SCREEN_TOP		equ	$5800
+SCREEN_ATR		equ	$5800
+ATR2			equ	$5900
+ATR3			equ	$5A00
+;ATR_MAP_TOP		equ	$5980
+;ATR_MSG_TOP 	equ	$5A00
+ATR_TOP			equ	$5B00
 PRINTER_BUF		equ $5B00
-FONTS_MSB		equ $3D
-SCR1_MSB		equ $40
-SCR2_MSB		equ $48
-SCR3_MSB		equ $50
-ATR_MSB			equ	$58
-ATR1_MSB		equ	$58
-ATR2_MSB		equ	$59
-ATR3_MSB		equ	$5A
+ATR_BUF			equ	$6000
 
 	; adresy ruchome
 
+	; ustalenie adresow w zaleznosci od polozenia okien
 	IF FOV_Y > 7
 FOV_ADR			equ	SCR2 + ( ( FOV_Y - $08 ) * $20 ) + FOV_X
 	ELSE
@@ -148,14 +148,17 @@ W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X
 W3D_ADR			equ	SCREEN + ( W3D_Y * $20 ) + W3D_X	
 	ENDIF
 
+;W3D_ATR_ADR		equ	( ( ( ( high W3D_ADR / $08 ) ) and $03 ) or $58 ) * $FF + low W3D_ADR
+W3D_ATR_ADR		equ	$58 * 256 + low W3D_ADR
+W3D_ATR_BUF		equ ATR_BUF + ( W3D_ATR_ADR - SCREEN_ATR )
+	
+
 MSG_ADR			equ	SCR2 + ( ( MSG_Y - $08 ) * $20 ) + MSG_X 
 MSG_LINE1		equ	MSG_ADR
 MSG_LINE2		equ	MSG_LINE1 + $20	
 STS_ADR			equ	SCREEN + ( STS_Y * $20 ) + STS_X
 ITM_ADR			equ	SCR2 + ( ITM_Y * $20 ) + ITM_X
 ATR3_BUF		equ	$F000
-ATR3_BUF_MSB	equ	$F0
 TILES			equ	$8000
-TILES_MSB		equ $80
 GAME_START		equ	$8400
 

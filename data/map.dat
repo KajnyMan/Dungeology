@@ -4,6 +4,7 @@
 ; # - Sciana nie do przejscia
 ; M - Scian ruchoma
 ; = - Ukryte przejscie
+; .	- Zapadnia
 ; + - Drzwi zamkniete
 ; / - Drzwi otwarte
 ; ~ - Klucz
@@ -30,14 +31,22 @@ MAP:
 
 ; ----------------------------------------------------------
 ; search_key przeszukuje mape liczac kolejne klucze
-; Jesli znjdzie klucz przypisuje mu nr klucza wg tej tabeli
+; Jesli znjdzie przypisuje mu nr klucza wg tej tabeli
 ; ----------------------------------------------------------
 key_door_nr:
 	db	11	;00
 	db	7	;01
+; ----------------------------------------------------------
+; take_weapon przeszukuje mape liczac kolejne bronie
+; Jesli znjdzie przypisuje mu wartosc wg tej tabeli
+; ----------------------------------------------------------
 weapon_pow:
 	db	1
 	db	2
+; ----------------------------------------------------------
+; take_armour przeszukuje mape liczac kolejne zbroje
+; Jesli znjdzie przypisuje mu wartosc wg tej tabeli
+; ----------------------------------------------------------
 armour_pow:
 	db	1
 

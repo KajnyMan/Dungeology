@@ -7,21 +7,17 @@
 ; USED:	A  
 ; ==================================================================
 gotoyx:
-		ld	de,SCREEN
+		ld	a,b
+		and	%00011000		; bity 3-4 Y-ka	
+		or	high SCREEN
+		ld	d,a
+		
 		ld	a,b
 		and	%00000111		; bity 0-2 Y-ka	
 		rrca				; * 32
 		rrca				; ( gorna tercja ekranu )
 		rrca
-		or	e
-		ld	e,a
-		ld	a,b
-		and	%00011000		; bity 3-4 Y-ka	
-		or	d			; * 2K ( 8 * 8 * 32 )
-		ld	d,a			; ( pozostale dwie tercje )
-						
-		ld	a,c
-		or	e			; przesuniecie X do adresu
+		add	a,c
 		ld	e,a
 		ret
 
@@ -38,7 +34,7 @@ pchar:
 		ld	l,a	
 		add	hl,hl	
 		add	hl,hl			; x8
-		ld	a,FONTS_MSB
+		ld	a,high FONTS
 		add	a,h
 		ld	h,a
 	REPT	8
@@ -54,17 +50,29 @@ pchar:
 ;		BC - adres pierwszego tile do wyswietlenia 
 ; ==================================================================	
 print_tile_line:
+;		-- atrybut do bufora ATR_BUF --
+		ld	a,d
+		rrca		
+		rrca		
+		rrca		
+		and	3
+		or	high ATR_BUF
+		ld	h,a
+		ld	l,e
+		push	hl
+		pop		ix			; adres poczatku lini atrybutu
+;		----------------------------------
+_next_char_in_line
 		ld	a,(bc)
 		cp	TILE_EOL
 		jp	z,ptile_out
 
-	;	print_attribute_2buffer
+		ex	af,af'
+		ld	(ix),a
+		ex	af,af'
 
 		MUL_Ax8_TO_HL
-;	push	hl
-;		PRINT_ATR
-;	pop		hl
-		ld	a,TILES_MSB	
+		ld	a,high TILES
 		add	a,h	
 		ld	h,a
 	REPT	8		
@@ -76,9 +84,11 @@ print_tile_line:
 		ld	a,d
 		sub	8
 		ld	d,a
+
 		inc	de
 		inc	bc
-		jr	print_tile_line	
+		inc	ix
+		jr	_next_char_in_line
 ptile_out:
 		ret
 
@@ -154,6 +164,7 @@ flash_portal:
 		or	a,%10000000
 		ld	(game_flags),a
 		jp	_printout	
+
 ; ==================================================================	
 ;	Zamienia adres pamieci ekranu na adres atrybutu
 ;	IN:	DE	- adres pamieci ekranu
@@ -161,44 +172,13 @@ flash_portal:
 ; ==================================================================	
 scr_to_atr:
 		ld	a,d
-		cp	$48
-		jr	c,_1_third
-		jr	z,_2_third
-		add	a,$0A
-		jr	_done
-_1_third
-		add	a,$18
-		jr	_done
-_2_third
-		add	a,$11
-_done
+		rrca
+		rrca
+		rrca
+		and	%00000011
+		or	high SCREEN_ATR
 		ld	d,a
 		ret
-
-; ==================================================================
-;	Ustawia atrybuty dla 'znaku' na ekranie
-;	IN:	A - atrybut
-;		DE - YX
-; ==================================================================
-;set_atr:
-;	push	af
-;		ld	a,d
-;		add	a,a
-;		add	a,a
-;		add	a,a
-;		ld	l,a
-;		ld	h,0
-;		add	hl,hl
-;		add hl,hl
-;		ld	a,e
-;		add	a,l
-;		ld	l,a
-;		ld	a,ATR_MSB	
-;		add	a,h
-;		ld	h,a
-;	pop		af		
-;		ld	(hl),a
-;		ret
 
 ; ==================================================================
 ;	Ustawia atrybuty dla lini na ekranie
@@ -208,26 +188,24 @@ _done
 ; ==================================================================
 set_atr_line
 
-		push	af
+		ex	af,af'
 
-		ld	a,d
-		add	a,a
-		add	a,a
-		add	a,a
-		ld	l,a
-		ld	h,0
-		add	hl,hl
-		add hl,hl
-		ld	a,e
-		add	a,l
-		ld	l,a
-		ld	a,ATR_MSB	
-		add	a,h
+		ld	a,d					; Y 
+		sra	a
+		sra	a
+		sra	a
+		add	a,high SCREEN_ATR
 		ld	h,a
-;		ld	a,b
+		ld	a,d
+		and	%00000111
+		rrca
+		rrca
+		rrca
+		add	a,e					; + X
+		ld	l,a
 		ld	b,c
 
-		pop		af		
+		ex	af,af'
 
 _nxt_col:	
 		ld	(hl),a
@@ -254,49 +232,6 @@ set_atr_block:
 	djnz	set_atr_block
 		ret
 
-; ==================================================================
-; Przyjmuje y,x ekranu, a zwraca adres w pamieci atrybutow ekranu 
-; IN:
-;	BC - Y,X
-; OUT:
-;	HL' - adres w pamieci atrybutow 
-; USED: A', BC'
-; ==================================================================
-
-;atryx:
-;		push	bc
-;		exx
-;		ex	af,af'
-;		pop	bc
-;
-;		ld	hl,0
-;		ld	a,b
-;		add	a,a
-;		add	a,a
-;		add	a,a
-;		ld	l,a	
-;		add	hl,hl
-;		add	hl,hl
-;		ld	b,0
-;		add	hl,bc
-;		ld	bc,SCREEN_ATR	
-;	add	hl,bc
-;		ex	af,af'
-;		exx	
-;		ret
-
-; ==================================================================
-; IN: 	HL' - adres gdzie ma pojawic sie bajt atrybutow 
-;	A - bajt atrybutow do skopiowania 
-; USED:	A'
-; ==================================================================	
-;patr:		push	af
-;		exx	
-;		pop	af
-;		ld	(hl),a
-;		exx
-;		ret
-
 ; ---------------------------------------------------------------
 ; Jesli bylo powiadomienie w poprzednim ruchu - trzeba wyczyscic
 ; ---------------------------------------------------------------
@@ -317,6 +252,22 @@ message_area_clear:
 		ld	(message_flag),a
 		ret
 		
+; ==========================================
+; Kopiuje atrybuty ekranu z bufora 
+; !!! do optymalizacji
+; ==========================================
+atr_buff_to_atr:
+		ld	hl,W3D_ATR_BUF	
+		ld	de,W3D_ATR_ADR
+	REPT	6
+		ld	a,23
+		ld	bc,9
+		ldir
+		add	a,l
+		ld	l,a
+		ld	e,a
+	ENDR
+		ret
 ; ==========================================
 ; Druguje ramke okna
 ; IN:	BC - Y, X lewego gornego rogu ramki

@@ -21,33 +21,6 @@ _skip:	djnz	_loop
 		pop	bc
 		ret		
 	
-; -----------------------------------
-; Mnozenie takich liczb aby iloczyn 
-; byl 8-bitowy. 
-; czynniki: B,C   iloczyn: A
-; -----------------------------------
-; mulproduct8:
-;		push	bc
-;		ld	a,0
-;	nxtadd:	add a,c
-;		djnz nxtadd
-;		pop	bc
-;		ret
-; Szybsza dla duzych mnoznikow ( > 8 )
-; mulproduct8:
-;		push	bc
-;
-;		ld	a,0
-;	loop1:	bit	0,b
-;		jr	z,skip2	
-;		add	a,c
-;	skip2:	sla	c
-;		srl	b
-;		jr	nz,loop1
-;		pop	bc
-;		ret
-
-
 ;-----------------------------
 ; Funkja zamienia liczbe w A
 ; na pare cyfr ASCII w C i B 

@@ -26,34 +26,41 @@ field_of_view:
 	; Ustawienie wskaznika dla fov_list
 	; Wszystkie obiekty w polu widzenia beda dodany do tej listy
 	; Te poza map beda wyzerowane
-	; 3 Bajty dla obiektu: y, x ( dla Terminala ), ASCII char obiektu 
+	; 3 Bajty dla obiektu: y, x, ASCII char obiektu 
 		ld	ix,fov_list
 
-	; Dodanie offsetow koordynatow Tiles do koordynatow Hero	
+	; Dodanie offsetow YX Tiles (wzgl. Hero ) do YX Hero	
 		ld	b,18			; 18 przebiegow petli
-setdataloop:
-		push	bc			; SAVE licznik
-		ld	(ix),00h
-		ld	(ix+1),00h
-		ld	(ix+2),00h
+		ld	c,HERO_Y
+
+		exx
+		ld	bc,(offset_pointer)
+		exx
+	
 		ld	hl,(coords_pointer)
-		; Y
+
+setdataloop:
+			; Y
 		ld	e,(hl)			; offset Y tile
-		ld	a,HERO_Y
+		ld	a,c				; HERO_Y
 		add	a,e
 		ld	(ix),a			; do Y tile i zapis do fov_list
 		inc	hl
-		; X
+
+			; X
 		ld	d,(hl)			; offset X tile
 		ld	a,HERO_X
 		add	a,d
 		ld	(ix+1),a		; do X tile i zapis do fov_list
 
-	; ASCII char
-		ld	hl,(offset_pointer)
-		ld	e,(hl)		
-		inc	hl
-		ld	d,(hl)
+			; char
+		exx
+
+		ld	a,(bc)		
+		ld	e,a
+		inc	bc
+		ld	a,(bc)
+		ld	d,a
 		ld	hl,(hero.offset)		
 		add	hl,de			; dodanie przesuniecia Hero
 		ex	de,hl			; save sumy przesuniec
@@ -62,21 +69,20 @@ setdataloop:
 		ld	a,(hl)			; Tile i zapisanie tego
 		ld	(ix+2),a		; char (Tile) na liscie fov
 
+		exx
+
 	; Przesuwa wskazniki koordynatow, wskaznika offsetu wzgl.Hero
 	; i wskaznika listy FOV
-		ld	hl,(coords_pointer)
 		inc	hl
-		inc	hl
-		ld	(coords_pointer),hl
-		ld	hl,(offset_pointer)
-		inc	hl
-		inc	hl
-		ld	(offset_pointer),hl
-		inc	ix
-		inc	ix
-		inc	ix	
-		pop	bc				; RESTORE licznik
+
+		exx
+		inc	bc
+		exx
+
+		ld	de,3
+		add	ix,de
 		djnz	setdataloop
+
 	
 	; ----------------------------------------------------
 	; - Petla wyswietlajaca FOV i zapisujaca do prev_fov -
@@ -117,7 +123,7 @@ _vsbl:
 		call	pchar
 
 		ld	a,b					; Restore Tile.char
-
+		
 		; ustawia miganie tam gdzie ma byc
 		cp	PORTAL_CHAR
 		jp	z,flash_portal
@@ -165,9 +171,9 @@ _three:
 		ld	a,(hl)	
 		or	a
 		jp	z,_vsbl			; jak 0 - wypad
-		ld	c,a				; Save index
-		add	a,a
-		add	a,c				; index x 3 ( y,x,char )
+;		ld	c,a				; Save index
+;		add	a,a
+;		add	a,c				; index x 3 ( y,x,char )
 		ld	ix,fov_list		; od tego liczymy offsety
 		ld	e,a				; D wyzerowane  wyzej
 		add	ix,de
@@ -198,29 +204,29 @@ count_order	db 	0,1,2
 ; cos, co zaslania ten Tile's
 ;-----------------------------------------------------
 list_indexes   ; indeksy fov_list  | iteracje petli
-		db	14, 0,0		;06
-		db	14, 0,0		;07
-		db	14, 0,0		;08
-		db	15,12,0		;09
-;		db	14,12,0		;10
-		db	14,11,0		;10
-		db	14,11,0		;11
-;		db	14,10,0		;12
-		db	14,11,0		;12
-		db	13,10,0		;13
-		db	15,12,8		;14
-		db	14,12,8		;15
-		db	14,11,7		;16
-		db	14,10,6		;17
-		db	13,10,6		;18
+		db	14*3, 0,0		;06
+		db	14*3, 0,0		;07
+		db	14*3, 0,0		;08
+		db	15*3,12*3,0		;09
+;		db	14,12,0			;10
+		db	14*3,11*3,0		;10
+		db	14*3,11*3,0		;11
+;		db	14,10,0			;12
+		db	14*3,11*3,0		;12
+		db	13*3,10*3,0		;13
+		db	15*3,12*3,8*3	;14
+		db	14*3,12*3,8*3	;15
+		db	14*3,11*3,7*3	;16
+		db	14*3,10*3,6*3	;17
+		db	13*3,10*3,6*3	;18
 
 ;--------------------------------------------------------------------------
 ; Lista obiektow wszystkich obiektow tile potencjalnie widocznych dla Hero
 ;--------------------------------------------------------------------------
-fov_list	ds	54			; ( Y, X, char ) x 18
+fov_list		ds	54			; ( Y, X, char ) x 18
 fov_list_end	
 prev_fov_list	ds	55			; jw. + DELIM
-iterator	dw	0000h			; iterator list
+iterator		dw	0000h		; iterator list
 
 ; -----------------------------------------------------------------
 ; Offset'y tiles wzgledem Hero - wypelniane przez funkcje calc_fov

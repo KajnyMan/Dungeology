@@ -19,4 +19,4 @@ _b_line:
 _b_end:
 
     ; pierwszy blok (BASIC) na tasme
-    SAVETAP "dng.tap", BASIC, "Loader", BasicStart, _b_end - BasicStart, 10
+    SAVETAP "dng.tap", BASIC, "DUNG", BasicStart, _b_end - BasicStart, 10
