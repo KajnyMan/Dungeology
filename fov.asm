@@ -14,18 +14,16 @@ field_of_view:
 		ld	e,(hl)			; przesuniecie do dodania
 		ld	hl,fov_coords
 		add	hl,de
-		ld	(coords_pointer),hl	; zapisany
+		push	hl			; SAVE coords_pointer
 		
 
 	; Ustawienie wkaznika dla offsetow tiles	
 	; koordynaty oraz offsety sa 2 bajtowe, wiec offset w DE jest ten sam
 		ld	hl,fov_offsets
 		add	hl,de			; wskaznik na offset tile 
-		ld	(offset_pointer),hl	; wzgledem Hero
+		push	hl			; SAVE offset_pointer
 
-	; Ustawienie wskaznika dla fov_list
-	; Wszystkie obiekty w polu widzenia beda dodany do tej listy
-	; Te poza map beda wyzerowane
+	; Wszystkie obiekty w polu widzenia sa dodawane do tej listy
 	; 3 Bajty dla obiektu: y, x, ASCII char obiektu 
 		ld	ix,fov_list
 
@@ -34,10 +32,10 @@ field_of_view:
 		ld	c,HERO_Y
 
 		exx
-		ld	bc,(offset_pointer)
+		pop		bc			; RESTORE offset_pointer
 		exx
 	
-		ld	hl,(coords_pointer)
+		pop		hl			; RESTORE coords_pointer
 
 setdataloop:
 			; Y
@@ -87,18 +85,18 @@ setdataloop:
 	; ----------------------------------------------------
 	; - Petla wyswietlajaca FOV i zapisujaca do prev_fov -
 	; ----------------------------------------------------
-		ld	b,18			; ilosc mozliwych pol widzenia
+		ld	b,18				; ilosc mozliwych pol widzenia
 printloop:
 		push	bc
 
 		ld	hl,count_order		; podmiana licznika na liczacy
-		ld	e,b			; z dwoch stron fov do srodka
+		ld	e,b					; z dwoch stron fov do srodka
 		ld	d,0
-		add	hl,de			; w hl adres nowego licznika
+		add	hl,de				; w hl adres nowego licznika
 
-		ld	a,(hl)			; Tylko dla Tile od 18 do 6
+		ld	a,(hl)
 		ld	(main_counter),a
-		cp	6			; spradza czy Tile widoczny
+		cp	6					; Tylko dla Tile od 18 do 6	
 		jp	nc,is_visible		; Reszta zawsze widoczna.
 _vsbl:
 		; Ustawienie kursora
@@ -106,19 +104,19 @@ _vsbl:
 		ld	a,(main_counter)
 		ld	b,a
 		add	a,a
-		add	a,b			; licznik x 3
+		add	a,b					; licznik x 3
 		ld	e,a
-		and	a			; carry  0	
-		sbc	hl,de			; Adres ( Y, X, char )
-		ld	b,(hl)		; Y
+		and	a					; carry  0	
+		sbc	hl,de				; Adres ( Y, X, char )
+		ld	b,(hl)				; Y
 		inc	hl
-		ld	c,(hl)		; X		
+		ld	c,(hl)				; X		
 		inc	hl
 		
 		; Tile na ekran	
 		call	gotoyx
 
-		ld	a,(hl)			; Tile char
+		ld	a,(hl)				; Tile char
 		ld	b,a					; Save Tile char
 		call	pchar
 
@@ -171,9 +169,7 @@ _three:
 		ld	a,(hl)	
 		or	a
 		jp	z,_vsbl			; jak 0 - wypad
-;		ld	c,a				; Save index
-;		add	a,a
-;		add	a,c				; index x 3 ( y,x,char )
+
 		ld	ix,fov_list		; od tego liczymy offsety
 		ld	e,a				; D wyzerowane  wyzej
 		add	ix,de
@@ -202,23 +198,22 @@ count_order	db 	0,1,2
 ;-----------------------------------------------------
 ; Indexy listy fov_list do sprawdzania czy jest tam
 ; cos, co zaslania ten Tile's
+; w celach optymalizacyjnych wstepnie przemnozone *3
 ;-----------------------------------------------------
 list_indexes   ; indeksy fov_list  | iteracje petli
-		db	14*3, 0,0		;06
-		db	14*3, 0,0		;07
-		db	14*3, 0,0		;08
-		db	15*3,12*3,0		;09
-;		db	14,12,0			;10
-		db	14*3,11*3,0		;10
-		db	14*3,11*3,0		;11
-;		db	14,10,0			;12
-		db	14*3,11*3,0		;12
-		db	13*3,10*3,0		;13
-		db	15*3,12*3,8*3	;14
-		db	14*3,12*3,8*3	;15
-		db	14*3,11*3,7*3	;16
-		db	14*3,10*3,6*3	;17
-		db	13*3,10*3,6*3	;18
+		db	14 *3,0,0			;06
+		db	14 *3,0,0			;07
+		db	14 *3,0,0			;08
+		db	15 *3,12 *3,0		;09
+		db	14 *3,11 *3,0		;10
+		db	14 *3,11 *3,0		;11
+		db	14 *3,11 *3,0		;12
+		db	13 *3,10 *3,0		;13
+		db	15 *3,12 *3,8 *3	;14
+		db	14 *3,12 *3,8 *3	;15
+		db	14 *3,11 *3,7 *3	;16
+		db	14 *3,10 *3,6 *3	;17
+		db	13 *3,10 *3,6 *3	;18
 
 ;--------------------------------------------------------------------------
 ; Lista obiektow wszystkich obiektow tile potencjalnie widocznych dla Hero
@@ -266,7 +261,6 @@ fov_coords
 		db	        1,0,        -1,0
 ; Tabela przesuniec w tabeli fov_coord. Przesuniecie zalezy od zwrotu Hero
 fov_shift	db	0, 36, 72, 108
+
 ; Pola wskaznikow
-coords_pointer	dw	0000h
-offset_pointer	dw	0000h
 counter		db	00h

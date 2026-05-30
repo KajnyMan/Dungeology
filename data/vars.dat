@@ -4,7 +4,8 @@ map	Map	{ 32, 12, $0000 }
 
 ;------ hero ----------
 hero			Character	{
-				2, 2, 1, $00,				; pozycja i offset 
+;				2, 2,						; Y X
+				1, $00,						; zwrot i offset 
 				16, 10, 8,					; stats
 				0,							; bron	
 				0,							; zbroja	
@@ -12,7 +13,7 @@ hero			Character	{
 							 }
 ; ------- Statyczne -----------------
 hero_i			db	'^','>','v','<'			; ikony Hero
-hero_s			db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
+;hero_s			db	0,-1, 1,0, 0,1, -1,0	; przesuniecie wspolrzednych
 neighbor_offs:	db	0,1,0,-1
 
 ; ------- Inventory ------------------------------

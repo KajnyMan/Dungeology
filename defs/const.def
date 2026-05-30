@@ -43,8 +43,8 @@ OFF_ATR			equ BLACK_BGD OR BLACK
 PORTAL_ATR		equ BLACK_BGD OR YELLOW OR FLASH
 WEAPON_ATR		equ BLACK_BGD OR CYAN
 ARMOUR_ATR		equ BLACK_BGD OR YELLOW
-KEY_ATR			equ BLACK_BGD OR GREEN
-FIGURE_ATR		equ BLACK_BGD OR GREEN
+KEY_ATR			equ BLACK_BGD OR RED
+FIGURE_ATR		equ BLACK_BGD OR WHITE
 
 
 	; klawiatura
@@ -110,6 +110,8 @@ NONE			equ	$FF
 OBJ_MAX			equ	16
 HERO_Y			equ	FOV_Y + 4
 HERO_X			equ FOV_X + 4 	
+HERO_MAP_Y		equ	2
+HERO_MAP_X		equ 2
 HERO_ATR		equ BLACK_BGD OR YELLOW
 HERO_YX			equ ( HERO_Y * 256 ) + HERO_X 
 NORTH			equ	0
@@ -135,21 +137,13 @@ ATR_BUF			equ	$6000
 
 	; adresy ruchome
 
-	; ustalenie adresow w zaleznosci od polozenia okien
-	IF FOV_Y > 7
-FOV_ADR			equ	SCR2 + ( ( FOV_Y - $08 ) * $20 ) + FOV_X
-	ELSE
-FOV_ADR			equ	SCREEN + ( FOV_Y * $20 ) + FOV_X
-	ENDIF
-	
-	IF	W3D_Y > 15
-W3D_ADR			equ	SCR3 + ( ( W3D_Y - $10 )  * $20 ) + W3D_X	
-	ELSE
-W3D_ADR			equ	SCREEN + ( W3D_Y * $20 ) + W3D_X	
-	ENDIF
+HERO_ADR		equ	( ( ( HERO_Y and $18 ) + $40 ) * 256 ) + ( ( HERO_Y and $07 ) * 32 ) + HERO_X
 
-;W3D_ATR_ADR		equ	( ( ( ( high W3D_ADR / $08 ) ) and $03 ) or $58 ) * $FF + low W3D_ADR
-W3D_ATR_ADR		equ	$58 * 256 + low W3D_ADR
+	; ustalenie adresow w zaleznosci od polozenia okien
+
+FOV_ADR			equ	( ( ( FOV_Y and $18 ) + $40 ) * 256 ) + ( ( FOV_Y and $07 ) * 32 ) + FOV_X
+W3D_ADR			equ	( ( ( W3D_Y and $18 ) + $40 ) * 256 ) + ( ( W3D_Y and $07 ) * 32 ) + W3D_X
+W3D_ATR_ADR		equ	( ( ( ( high W3D_ADR / $08 ) ) and $03 ) or $58 ) * 256 + low W3D_ADR
 W3D_ATR_BUF		equ ATR_BUF + ( W3D_ATR_ADR - SCREEN_ATR )
 	
 

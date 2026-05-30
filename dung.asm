@@ -28,12 +28,10 @@ CodeStart:
 		push	hl
 		exx
 		ex	af,af'
-;_init
+
 		include	init.asm
 		
 ; ===============  M A I N    L O O P =================
-
-;		jp	_begin
 
 refresh:
 		; czyszczenie okna fov
@@ -45,7 +43,7 @@ refresh:
 		ld	hl,W3D_ADR
 		ld	b,W3D_HEIGHT
 		call	clear_txtlines
-_begin
+
 		; "wygaszone" okno 3D przy rysowaniu
 		ld	a,OFF_ATR
 		ld	b,W3D_HEIGHT
@@ -58,41 +56,25 @@ _begin
 		; -----------------------
 		; Pole widzenia na ekran
 		; -----------------------
-
-		call	field_of_view		; fov.z80
+		call	field_of_view		; fov.asm
 
 		; -----------------------
 		;  "widzialnosc" okna 3D
 		; -----------------------
 		call	atr_buff_to_atr
-	;	ld	a,W3D_ATR
-	;	ld	b,W3D_HEIGHT
-	;	ld	c,W3D_WIDTH
-	;	ld	de, W3D_YX
-	; 	call set_atr_block
-		
-		; --------------	
-		; Hero na ekran	
-		; --------------
-		ld	hl,hero_i		; ikona hero
+
+		; -----------------	
+		; Hero na ekran	fov
+		; -----------------
+		ld	hl,hero_i				; ikona hero
 		ld	a,(hero.direction)		; w zaleznosci
-		ld	b,0				; od kierunku
-		ld	c,a				; i zwrotu
-		add	hl,bc			; ^ > v <
+		ld	b,0						; od kierunku
+		ld	c,a						; i zwrotu
+		add	hl,bc					; ^ > v <
 		ld	a,(hl)
-		ld	bc,HERO_YX		; stala pozycja HERO na ekranie
-
-		ld	h,a				; SAVE char
-		call	gotoyx
-		ld	a,h				; RESTORE char
-
+		ld	de,HERO_ADR
 		call	pchar
 		
-		ld	a, HERO_ATR
-		ld	de,HERO_YX
-		ld	c,1					; jeden znak
-		call	set_atr_line
-
 wait_release:
 		call	scan_keyboard	
 		or	a
@@ -279,19 +261,6 @@ move:
 		jp	z,abbys
 
 		ld	(hero.offset),de	; Hero new offset
-		ld	hl,hero_s	; /
-		ld	a,(hero.direction)	; Przesuniecie kursora
-		add	a,a		; do nowej pozycji
-		ld	e,a		; Hero
-		ld	d,00h
-		add	hl,de
-		ld	a,(hero.mapX)
-		add	a,(hl)
-		ld	(hero.mapX),a
-		inc	hl
-		ld	a,(hero.mapX)
-		add	a,(hl)
-		ld	(hero.mapY),a	; \____________
 
 		call	message_area_clear
 		jp	refresh
@@ -626,10 +595,10 @@ _p_info
 abbys:
 		PRINT_STR	MSG_LINE1,msg_pit	
 		PRINT_STR	MSG_LINE2,msg_restart	
-		ld	a,2
-		ld	(hero.mapY),a
-		ld	a,2
-		ld	(hero.mapX),a
+	;	ld	a,2
+	;	ld	(hero.mapY),a
+	;	ld	a,2
+	;	ld	(hero.mapX),a
 
 		jp	_restart
 

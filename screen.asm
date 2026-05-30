@@ -75,12 +75,30 @@ _next_char_in_line
 		ld	a,high TILES
 		add	a,h	
 		ld	h,a
+
+;	ld	a,(main_counter)
+;	cp	10
+;	jr	z,_or_it	
+;	cp	12
+;	jr	z,_or_it	
+
 	REPT	8		
 		ld	a,(hl)
 		ld	(de),a
 		inc	hl
 		inc	d
 	ENDR
+;	jr	_reset_and_inc
+
+;_or_it
+;		REPT	8		
+;			ld	a,(de)
+;			or	(hl)	
+;			ld	(de),a
+;			inc	hl
+;			inc	d
+;		ENDR
+;_reset_and_inc
 		ld	a,d
 		sub	8
 		ld	d,a

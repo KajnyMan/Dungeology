@@ -1,54 +1,11 @@
 ; ==============
 ;  Init
 ; ==============
+
 		BORDER_COLOR BLACK
-		SET_COLOR	BLACK_BGD OR BLACK, ATR_TOP, 24
+		SET_COLOR	OFF_ATR, ATR_TOP, 24
 		CLEAR_LINES SCREEN_TOP, 192
 
-		call	print_frames
-
-		; kolory okna powiadomien
-		ld	a,MSG_ATR
-		ld	b,MSG_HEIGHT
-		ld	c,MSG_WIDTH
-		ld	de,MSG_YX
-		call set_atr_block
-
-		; kolory ramki mapy
-		ld	a,FOV_FRAME_ATR	
-		ld	b,FOV_FRAME_H
-		ld	c,FOV_FRAME_W
-		ld	de,FOV_FRAME_YX
-		call set_atr_block
-
-;		; kolory ramki	3D 
-		ld	a,W3D_FRAME_ATR	
-		ld	b,W3D_FRAME_H
-		ld	c,W3D_FRAME_W
-		ld	de,W3D_FRAME_YX
-		call set_atr_block
-
-		; kolory okna mapy
-		ld	a,FOV_ATR
-		ld	b,FOV_HEIGHT
-		ld	c,FOV_WIDTH
-		ld	de,FOV_YX
-		call set_atr_block
-
-		; kolory okna statystyk
-		ld	a,STS_ATR
-		ld	b,STS_HEIGHT
-		ld	c,STS_WIDTH
-		ld	de,STS_YX
-		call set_atr_block
-		
-		; kolory okna przedmiotow
-		ld	a,ITM_ATR
-		ld	b,ITM_HEIGHT
-		ld	c,ITM_WIDTH
-		ld	de,ITM_YX
-		call set_atr_block
-		
 ; ------ Oblicza rozmiar mapy --------
 		ld	hl,(map.width)
 		ld	b,h
@@ -112,20 +69,6 @@ _inc_counters:
 		ld	a,b
 		or	c
 		jr	nz,_next_mapchar
-
-_restart
-; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
-		ld	a,(hero.mapY)
-		ld	c,a
-		ld	a,(map.width)
-		ld	b,a
-		call	mul8
-		ld	a,(hero.mapX)
-		ld	d,0
-		ld	e,a
-		add	hl,de	
-		ld	(hero.offset),hl
-
 
 ; Oblicza i wypelnia tabele neighbor_offs
 		ld	ix,neighbor_offs
@@ -237,4 +180,71 @@ _nxt1:	push	bc
 ; Wbija biezace statystyki hero do stringow stat_info
 		call	update_info_strings
 		call	print_info
+
+; Drukuje ramki
+		call	print_frames
+
+		; kolory okna powiadomien
+		ld	a,MSG_ATR
+		ld	b,MSG_HEIGHT
+		ld	c,MSG_WIDTH
+		ld	de,MSG_YX
+		call set_atr_block
+
+		; kolory ramki mapy
+		ld	a,FOV_FRAME_ATR	
+		ld	b,FOV_FRAME_H
+		ld	c,FOV_FRAME_W
+		ld	de,FOV_FRAME_YX
+		call set_atr_block
+
+;		; kolory ramki	3D 
+		ld	a,W3D_FRAME_ATR	
+		ld	b,W3D_FRAME_H
+		ld	c,W3D_FRAME_W
+		ld	de,W3D_FRAME_YX
+		call set_atr_block
+
+		; kolory okna mapy
+		ld	a,FOV_ATR
+		ld	b,FOV_HEIGHT
+		ld	c,FOV_WIDTH
+		ld	de,FOV_YX
+		call set_atr_block
+
+		; kolory okna statystyk
+		ld	a,STS_ATR
+		ld	b,STS_HEIGHT
+		ld	c,STS_WIDTH
+		ld	de,STS_YX
+		call set_atr_block
 		
+		; kolory okna przedmiotow
+		ld	a,ITM_ATR
+		ld	b,ITM_HEIGHT
+		ld	c,ITM_WIDTH
+		ld	de,ITM_YX
+		call set_atr_block
+
+		;kolor Hero w oknie mapy 
+		ld	a, HERO_ATR
+		ld	de,HERO_YX
+		ld	c,1					; jeden znak
+		call	set_atr_line
+
+
+_restart
+; Na podstawie Y,X oblicza offset hero wzgledem poczatku map'y
+;		ld	a,(hero.mapY)
+		ld	a,HERO_MAP_Y
+		ld	c,a
+		ld	a,(map.width)
+		ld	b,a
+		call	mul8
+;		ld	a,(hero.mapX)
+		ld	a,HERO_MAP_X
+		ld	d,0
+		ld	e,a
+		add	hl,de	
+		ld	(hero.offset),hl
+

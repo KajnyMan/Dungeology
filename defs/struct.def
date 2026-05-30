@@ -13,8 +13,8 @@ keys			db : db			; 2 bajtowe pole flag, klucz nr 1 = 7 bit lsb
 
 ; ----------------------------
 	STRUCT	Character
-mapY			db
-mapX			db
+;mapY			db
+;mapX			db
 direction		db
 offset			dw
 stat			Stat
