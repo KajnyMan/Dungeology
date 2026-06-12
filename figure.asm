@@ -5,6 +5,7 @@ talk_figure:
 		ld	a,(hero.stat.def)
 		cp	9
 		jr	c,_insf	
+		ld	(ix),FLOOR_CHAR		; wziety z gleby
 		push	hl	
 		PRINT_STR	MSG_LINE1 + 2, talk_ready	
 		PRINT_STR	MSG_LINE2 + 1, talk_nxt_lvl	

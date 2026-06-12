@@ -55,7 +55,7 @@ print_tile_line:
 		rrca		
 		rrca		
 		rrca		
-		and	3
+		and	%00000011	
 		or	high ATR_BUF
 		ld	h,a
 		ld	l,e
@@ -167,7 +167,7 @@ _same_third:
 
 ; ==================================================================
 ;	Ustawia miganie char'a
-;	IN:	DE - adres chara w pamieci ekranu	
+;	IN:	DE - adres char'a w pamieci ekranu	
 ; ==================================================================
 flash_portal:
 		ld	a,d					; restore DE

@@ -11,23 +11,38 @@ print_o_door_3d:
 		ld	b,W3D_ATR
 		jr	_common
 print_key_3d:
+		IN_RANGE	3, 8, _printout		; tylko pola w zasiegu do druku
 		ld	hl,key_sprites
 		ld	b,KEY_ATR
-		jr	_common
+		jr	_selected	
 print_weapon_3d:
+		IN_RANGE	3, 8, _printout
 		ld	hl,weapon_sprites
 		ld	b,WEAPON_ATR
-		jr	_common
+		jr	_selected	
 print_armour_3d:
+		IN_RANGE	3, 8, _printout
 		ld	hl,armour_sprites
 		ld	b,ARMOUR_ATR
-
+		jr	_selected	
+print_bat_3d:
+		IN_RANGE	3, 5, _printout
+		ld	hl,bat_sprites
+		ld	b,BAT_ATR
+		jr	_selected	
+print_figure_3d:
+		IN_RANGE	4, 4, _printout
+		ld	hl,figure_sprites
+		ld	b,FIGURE_ATR
+		jr	_selected	
 _common
+		ld	a,(main_counter)
+		dec	a
+_selected
 		ex	af,af'
 		ld	a,b
 		ex	af,af'
-		ld	a,(main_counter)
-		dec	a
+
 		add	a,a
 		ld	d,0
 		ld	e,a
@@ -69,16 +84,5 @@ _nxt
 		djnz	_nxt
 		jp	_printout
 
-print_figure_3d:
-		ld	a,(main_counter)
-		cp	4					; stwor przed Hero
-		jp	nz,_printout		
-
-		ld	de,f04
-		ex	af,af'
-		ld	a,FIGURE_ATR
-		ex	af,af'
-		jr	_direct	
-		
 		include figure.asm
 		include data/sprites.dat

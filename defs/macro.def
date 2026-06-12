@@ -140,3 +140,13 @@ atrbuf_2_atr	MACRO
 		ld	bc,32 * 8
 		ldir
 		ENDM
+
+; ===========================
+IN_RANGE	MACRO	_min, _max, _exit_adr
+		ld	a,(main_counter)
+		cp	_min
+		jp	c,_exit_adr
+		cp	_max + 1
+		jp	nc,_exit_adr
+		sub	_min
+		ENDM

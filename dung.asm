@@ -106,7 +106,7 @@ key_press:
 look_down:
 		call	message_area_clear
 		PRINT_STR	MSG_LINE1 + 2, msg_floor
-		call	search_floor
+		call	examine_floor
 		ld	a,c
 		cp	KEY_CHAR
 		jp	z,take_key
@@ -137,7 +137,7 @@ look_ahead:
 		jp	z,move_door
 
 		cp	FIGURE_CHAR
-		jp	nz,search
+		jp	nz,search_passage
 
 		PRINT_STR	MSG_LINE1 + 1, msg_figure1
 		PRINT_STR	MSG_LINE2 + 4, msg_figure2
@@ -154,7 +154,6 @@ push_it:
 		jp	z,talk_figure
 
 		; jesli nie postac
-		call	right_before
 		push	hl					; SAVE tile adres	
 		ld	hl,m_walls
 		call	check_offset16	
@@ -291,7 +290,7 @@ _addit	ld	hl,(hero.offset)
 ;--------------------------------------------
 ; Szuka ukrytych przejsc itp.
 ;--------------------------------------------
-search:
+search_passage:
 		push	hl					; SAVE adres char przed Hero
 		exx
 		PRINT_STR	MSG_LINE1 + 2, msg_searching
@@ -325,7 +324,7 @@ _nothing_here
 ;		HL - jego adress	
 ;		DE - i offset
 ; ----------------------------------------------------
-search_floor:
+examine_floor:
 		ld	de,(hero.offset)
 		ld	hl,MAP
 		add	hl,de
@@ -359,7 +358,8 @@ remove_key:
 ; IN:	C - char klucza
 ; ----------------------------------------------------
 take_key:
-		call	search_map
+		call	find_on_map
+		ld	(hl),FLOOR_CHAR		; wziety z gleby
 		ld	hl,key_door_nr
 		add	hl,de
 		ld	a,(hl)
@@ -372,7 +372,8 @@ take_key:
 ; IN:	C - char broni
 ; ----------------------------------------------------
 take_weapon:
-		call	search_map
+		call	find_on_map
+		ld	(hl),FLOOR_CHAR		; wziety z gleby
 		ld	hl,weapon_pow
 		add	hl,de
 		ld	a,(hl)
@@ -388,7 +389,8 @@ take_weapon:
 ; IN:	C - char zbroi 
 ; ----------------------------------------------------
 take_armour:
-		call	search_map
+		call	find_on_map
+		ld	(hl),FLOOR_CHAR		; wziety z gleby
 		ld	hl,armour_pow
 		add	hl,de
 		ld	a,(hl)
@@ -419,7 +421,7 @@ equip:
 ;		HL - adres do sprawdzenia
 ; OUT:	B, DE	- ktory w kolejnosci na MAP'e	
 ; ----------------------------------------------------
-search_map:
+find_on_map:
 		ex	de,hl				; adres do znalezienia w DE
 		ld	b,0					; licznik C char'ow
 		ld	hl,MAP
@@ -444,7 +446,6 @@ _check_msb
 		inc	b					; char ten, ale nie ten adres
 		jr _not_this			; no nie
 _this_one
-		ld	(hl),FLOOR_CHAR		; wziety z gleby
 		ld	d,0
 		ld	e,b
 		ret

@@ -3,9 +3,7 @@ field_of_view:
 ;=============
 	; fov_coords - offsety tiles na ekranie ( zawsze stale )
 	; fov_offsets - offsety tiles na mapie ( zaleza od szerokosci mapy )
-
 	; Ustawienie wskaznika fov_coords w zaleznosci kierunku patrzenia. 
-	; wariant z 4 bajtowa tabelka fov_shift ( staly krok o 36B )
 		ld	hl,fov_shift
 		ld	a,(hero.direction)
 		ld	d,0
@@ -144,6 +142,9 @@ _print3d
 
 		cp	ARMOUR_CHAR	
 		jp	z,print_armour_3d
+
+		cp	BAT_CHAR	
+		jp	z,print_bat_3d
 		
 		cp	FIGURE_CHAR
 		jp	z,print_figure_3d
@@ -154,7 +155,7 @@ _printout:
 
 ;-----------------------------------
 ; Sprawdza czy Tile jest widoczny
-; ( w A jest licznil petli funkji wywolujacej )
+; ( w A jest licznik petli funkji wywolujacej )
 ;-----------------------------------	
 is_visible:
 		ld	b,3				; 3 przebiegi petli
