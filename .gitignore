@@ -1,0 +1,12 @@
+# Wynik budowania -- odtwarzalny poleceniem `make`.
+build/
+
+# Asembler zbudowany lokalnie przez `make toolchain`.
+.toolchain/
+
+# Listing i plik etykiet sjasmplusa.
+*.lst
+*.sym
+
+# macOS
+.DS_Store

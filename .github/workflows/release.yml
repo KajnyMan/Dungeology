@@ -1,0 +1,66 @@
+name: release
+
+# Nadanie tagu zaczynajacego sie od "v" (np. v1.0.0) buduje gre i wystawia
+# TAP-a jako wydanie na GitHubie, gotowe do pobrania jednym kliknieciem:
+#
+#   git tag -a v1.0.0 -m "opis wydania"
+#   git push origin v1.0.0
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Zapis potrzebny wylacznie do utworzenia wydania.
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: publikacja TAP-a
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Cache asemblera
+        uses: actions/cache@v6
+        with:
+          path: .toolchain
+          key: sjasmplus-1.22.0-${{ runner.os }}
+
+      - name: Zbuduj TAP-a
+        run: make all
+
+      # Asembler zapisuje plik pod nazwa zaszyta w zrodlach (dng.tap);
+      # czytelniejsza nazwa z numerem wersji powstaje dopiero tutaj, przy
+      # pakowaniu, wiec zrodel nie trzeba ruszac.
+      - name: Spakuj TAP-a
+        run: |
+          set -eu
+          mkdir -p dist
+          cp build/dng.tap "dist/dungeology-${GITHUB_REF_NAME}.tap"
+          cd dist
+          zip "dungeology-${GITHUB_REF_NAME}-tap.zip" \
+              "dungeology-${GITHUB_REF_NAME}.tap"
+          unzip -l "dungeology-${GITHUB_REF_NAME}-tap.zip"
+
+      - name: Opublikuj wydanie
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          if gh release view "${GITHUB_REF_NAME}" \
+               --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/*.zip \
+              --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/*.zip \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Dungeology ${GITHUB_REF_NAME}" \
+              --notes "TAP z gra Dungeology ${GITHUB_REF_NAME} na ZX Spectrum 48K. Wczytaj w dowolnym emulatorze albo na prawdziwym Spectrumie." \
+              --verify-tag
+          fi
