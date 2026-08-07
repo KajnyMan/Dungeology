@@ -1,0 +1,72 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+# Token tylko do odczytu -- ten workflow niczego nie zapisuje.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: budowanie TAP-a (sjasmplus)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # sjasmplus nie ma binarki dla Linuksa ani formuly w Homebrew, wiec
+      # Makefile buduje go ze zrodel z przypietego archiwum o sprawdzanej
+      # sumie kontrolnej. Cache trzyma to w ryzach -- budowa raz na wersje.
+      - name: Cache asemblera
+        uses: actions/cache@v6
+        with:
+          path: .toolchain
+          key: sjasmplus-1.22.0-${{ runner.os }}
+
+      - name: Zbuduj TAP-a
+        run: make all
+
+      - name: Sprawdz, czy TAP wyglada sensownie
+        run: |
+          set -eu
+          test -f build/dng.tap
+          size=$(wc -c < build/dng.tap)
+          echo "Rozmiar TAP-a: ${size} B"
+          # Za maly TAP oznacza, ze build po cichu nic nie wyprodukowal;
+          # wiekszy niz pamiec 48K oznacza, ze cos poszlo bardzo nie tak.
+          test "${size}" -gt 4096
+          test "${size}" -lt 49152
+
+      # Informacyjnie: czy dng.tap zacommitowany w repozytorium odpowiada
+      # temu, co wychodzi z aktualnych zrodel. Krok celowo nie blokuje
+      # builda (continue-on-error) -- zolty znaczek przypomina o odswiezeniu
+      # binarki, ale nie zatrzymuje pracy. Po przejsciu na wydania ten krok
+      # i sam dng.tap mozna usunac.
+      - name: Czy zacommitowany dng.tap jest aktualny?
+        continue-on-error: true
+        run: |
+          set -eu
+          if [ ! -f dng.tap ]; then
+            echo "Brak dng.tap w repozytorium -- nie ma czego porownywac."
+            exit 0
+          fi
+          if cmp -s dng.tap build/dng.tap; then
+            echo "Zacommitowany dng.tap zgadza sie ze zrodlami."
+          else
+            echo "UWAGA: dng.tap w repozytorium rozni sie od wyniku budowania."
+            echo "Odswiez go albo polegaj na wydaniach."
+            exit 1
+          fi
+
+      # Artefakt mozna pobrac z podsumowania kazdego uruchomienia CI.
+      - name: Wystaw TAP-a jako artefakt
+        uses: actions/upload-artifact@v7
+        with:
+          name: dungeology-tap
+          path: build/dng.tap
+          if-no-files-found: error
